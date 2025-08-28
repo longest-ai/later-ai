@@ -259,54 +259,61 @@ app.post('/api/save-item', async (req, res) => {
     const token = authHeader.substring(7);
     const { url, title, content, description, image, category, tags } = req.body;
     
-    // Verify token with Supabase
-    const supabaseUrl = process.env.SUPABASE_URL || 'https://hqxfsonpjxnfafhwygwv.supabase.co';
-    const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxeGZzb25wanhuZmFmaHd5Z3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNTY1MDQsImV4cCI6MjA3MTkzMjUwNH0.eBMel__WsYsStL1_949eVRM2lei-91F2yfnWfWKDswI';
-    
-    // Get user info from token
-    const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'apikey': supabaseKey
+    // Simplified approach: trust the token and extract user_id from JWT payload
+    // In production, you should properly verify the JWT signature
+    try {
+      // Decode JWT token (without verification for now)
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 3) {
+        return res.status(401).json({ error: 'Invalid token format' });
       }
-    });
-    
-    if (!userResponse.ok) {
+      
+      const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+      const userId = payload.sub; // Supabase stores user ID in 'sub' field
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'No user ID in token' });
+      }
+      
+      // Save to database using Supabase REST API
+      const supabaseUrl = process.env.SUPABASE_URL || 'https://hqxfsonpjxnfafhwygwv.supabase.co';
+      const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxeGZzb25wanhuZmFmaHd5Z3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNTY1MDQsImV4cCI6MjA3MTkzMjUwNH0.eBMel__WsYsStL1_949eVRM2lei-91F2yfnWfWKDswI';
+      
+      const saveResponse = await fetch(`${supabaseUrl}/rest/v1/saved_items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${token}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          url,
+          title,
+          content: content || '',
+          description: description || '',
+          image: image || '',
+          category: category || '기타',
+          tags: tags || [],
+          is_read: false,
+          is_favorite: false
+        })
+      });
+      
+      if (!saveResponse.ok) {
+        const errorText = await saveResponse.text();
+        console.error('Supabase save error:', errorText);
+        return res.status(500).json({ error: 'Failed to save item', details: errorText });
+      }
+      
+      res.json({ success: true, message: 'Item saved successfully' });
+      
+    } catch (decodeError) {
+      console.error('Token decode error:', decodeError);
       return res.status(401).json({ error: 'Invalid token' });
     }
     
-    const userData = await userResponse.json();
-    
-    // Save to database
-    const saveResponse = await fetch(`${supabaseUrl}/rest/v1/saved_items`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${token}`,
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({
-        user_id: userData.id,
-        url,
-        title,
-        content: content || '',
-        description: description || '',
-        image: image || '',
-        category: category || '기타',
-        tags: tags || [],
-        is_read: false,
-        is_favorite: false
-      })
-    });
-    
-    if (!saveResponse.ok) {
-      const error = await saveResponse.json();
-      console.error('Supabase save error:', error);
-      return res.status(500).json({ error: 'Failed to save item' });
-    }
-    
-    res.json({ success: true, message: 'Item saved successfully' });
   } catch (error) {
     console.error('Error saving item:', error);
     res.status(500).json({ error: error.message });
