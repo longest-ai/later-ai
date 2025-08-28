@@ -87,4 +87,4 @@ Response:
   "summary": "Content summary",
   "ai_processed": true
 }
-```
+```# Trigger rebuild
