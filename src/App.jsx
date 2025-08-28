@@ -14,9 +14,6 @@ function ProtectedRoute({ children }) {
     )
   }
   
-  // 디버깅용 콘솔
-  console.log('ProtectedRoute - user:', user, 'loading:', loading)
-  
   return user ? children : <Navigate to="/login" />
 }
 

@@ -129,12 +129,21 @@ app.post('/api/fetch-metadata', async (req, res) => {
 
 // Endpoint to classify content using OpenAI
 app.post('/api/classify-content', async (req, res) => {
+  console.log('🎯 [AI Classification] Request received');
   try {
     const { title, content, url } = req.body;
+    console.log('📝 [AI Classification] Input data:', {
+      hasTitle: !!title,
+      title: title,
+      hasContent: !!content,
+      contentLength: content?.length,
+      hasUrl: !!url,
+      url: url
+    });
     
     // Check if OpenAI API key is configured
     if (!process.env.OPENAI_API_KEY) {
-      console.log('OpenAI API key not configured, returning default classification');
+      console.log('⚠️ [AI Classification] OpenAI API key not configured, returning default classification');
       return res.json({
         category: '기타',
         tags: [],
@@ -143,6 +152,8 @@ app.post('/api/classify-content', async (req, res) => {
       });
     }
     
+    console.log('🔑 [AI Classification] OpenAI API key is configured');
+    
     // Prepare the content for classification
     const textToClassify = `
       제목: ${title || '제목 없음'}
@@ -150,9 +161,12 @@ app.post('/api/classify-content', async (req, res) => {
       내용: ${content ? content.substring(0, 500) : ''}
     `;
     
+    console.log('📤 [AI Classification] Calling OpenAI API with text length:', textToClassify.length);
+    console.log('📋 [AI Classification] Text to classify:', textToClassify.substring(0, 200) + '...');
+    
     // Call OpenAI API for classification
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5-nano',
+      model: 'gpt-3.5-turbo',
       messages: [
         {
           role: 'system',
@@ -177,18 +191,30 @@ ${textToClassify}
       response_format: { type: "json_object" }
     });
     
+    console.log('✅ [AI Classification] OpenAI API response received');
+    console.log('🤖 [AI Classification] Raw response:', completion.choices[0].message.content);
+    
     const result = JSON.parse(completion.choices[0].message.content);
     
-    console.log('AI classification result:', result);
+    console.log('📊 [AI Classification] Parsed result:', JSON.stringify(result, null, 2));
     
-    res.json({
+    const response = {
       category: result.category || '기타',
       tags: result.tags || [],
       summary: result.summary || '',
       ai_processed: true,
-    });
+    };
+    
+    console.log('✨ [AI Classification] Sending response to client:', JSON.stringify(response, null, 2));
+    res.json(response);
   } catch (error) {
-    console.error('Error classifying content:', error);
+    console.error('❌ [AI Classification] Error classifying content:', error);
+    console.error('🔍 [AI Classification] Error details:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data,
+      status: error.response?.status
+    });
     res.status(200).json({
       category: '기타',
       tags: [],

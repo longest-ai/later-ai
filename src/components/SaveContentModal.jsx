@@ -8,7 +8,7 @@ import { handleIncomingShare } from '../services/capacitor'
 import { saveContent, updateSavedItem } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
-function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave }) {
+function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIUpdate }) {
   const { user } = useAuth()
   const [contentType, setContentType] = useState('url') // url, text, image
   const [url, setUrl] = useState('')
@@ -68,13 +68,16 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave }) {
       
       if (error) throw error
       
-      // Trigger AI classification in background
+      // Pass the new item to parent for immediate UI update
+      if (data && onSave) {
+        onSave(data)
+      }
+      
+      // Trigger AI classification and update UI when done
       if (data) {
         classifyContent(data.id, itemData.content || '', itemData.title, itemData.url)
       }
       
-      // Close modal and refresh list
-      onSave && onSave()
       onClose()
       resetForm()
     } catch (error) {
@@ -86,9 +89,19 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave }) {
   }
   
   const classifyContent = async (itemId, content, title, url) => {
+    console.log('🚀 [Client] Starting AI classification for item:', itemId)
+    console.log('📋 [Client] Classification data:', { 
+      hasContent: !!content, 
+      contentLength: content?.length,
+      title, 
+      url 
+    })
+    
     try {
       // Call our backend server to classify content
       const serverUrl = import.meta.env.VITE_METADATA_SERVER_URL || 'http://localhost:3001'
+      console.log('📡 [Client] Sending classification request to:', `${serverUrl}/api/classify-content`)
+      
       const response = await fetch(`${serverUrl}/api/classify-content`, {
         method: 'POST',
         headers: {
@@ -97,20 +110,56 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave }) {
         body: JSON.stringify({ content, title, url })
       })
       
+      console.log('📨 [Client] Classification response status:', response.status)
+      
       if (response.ok) {
         const result = await response.json()
+        console.log('🎯 [Client] Classification result received:', result)
+        
         // Update the item in the database with classification results
-        if (result.category || result.tags) {
-          await updateSavedItem(itemId, {
+        if (result.category || result.tags || result.summary) {
+          console.log('💾 [Client] Updating item in database with:', {
             category: result.category,
             tags: result.tags,
             ai_summary: result.summary,
-            ai_processed: true
+            ai_processed: result.ai_processed
           })
+          
+          const { data: updateData, error: updateError } = await updateSavedItem(itemId, {
+            category: result.category || '기타',
+            tags: result.tags || [],
+            ai_summary: result.summary || '',
+            ai_processed: result.ai_processed !== false
+          })
+          
+          if (updateError) {
+            console.error('❌ [Client] Error updating item in database:', updateError)
+          } else {
+            console.log('✅ [Client] Item successfully updated in database:', updateData)
+            // Notify parent component about AI update
+            if (onAIUpdate && updateData) {
+              onAIUpdate(itemId, {
+                category: result.category || '기타',
+                tags: result.tags || [],
+                ai_summary: result.summary || '',
+                ai_processed: true
+              })
+            }
+          }
+        } else {
+          console.warn('⚠️ [Client] No classification data to update')
         }
+      } else {
+        console.error('❌ [Client] Classification request failed with status:', response.status)
+        const errorText = await response.text()
+        console.error('❌ [Client] Error response:', errorText)
       }
     } catch (error) {
-      console.error('Error classifying content:', error)
+      console.error('❌ [Client] Error classifying content:', error)
+      console.error('🔍 [Client] Error details:', {
+        message: error.message,
+        stack: error.stack
+      })
     }
   }
   
