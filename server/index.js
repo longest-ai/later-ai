@@ -293,7 +293,7 @@ app.post('/api/save-item', async (req, res) => {
           title,
           content: content || '',
           description: description || '',
-          image: image || '',
+          image_url: image || '',  // Changed from 'image' to 'image_url' to match database schema
           category: category || '기타',
           tags: tags || [],
           is_read: false,
