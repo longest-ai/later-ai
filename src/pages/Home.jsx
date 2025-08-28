@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input'
 import { Badge } from '../components/ui/badge'
 import SaveContentModal from '../components/SaveContentModal'
 import { handleIncomingShare } from '../services/capacitor'
-import { getSavedItems, updateSavedItem, deleteSavedItem } from '../lib/supabase'
+import { getSavedItems, updateSavedItem, deleteSavedItem, saveContent } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
@@ -19,8 +19,11 @@ function Home() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [sharedContent, setSharedContent] = useState(null)
   const [savedItems, setSavedItems] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [quickSaveUrl, setQuickSaveUrl] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [selectedTag, setSelectedTag] = useState(null)
 
   // Fetch saved items on mount
   useEffect(() => {
@@ -32,15 +35,15 @@ function Home() {
       setSharedContent(shared)
       setIsModalOpen(true)
     }
-  }, [user])
+  }, [user?.id])
 
   const fetchSavedItems = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
+    if (!user?.id) return
     
-    setLoading(true)
+    // Don't set loading if we already have items (avoid flicker)
+    if (savedItems.length === 0) {
+      setLoading(true)
+    }
     setError(null)
     
     try {
@@ -59,12 +62,16 @@ function Home() {
   }
 
   const handleDeleteItem = async (id) => {
+    // Optimistic update - remove immediately from UI
+    setSavedItems(prev => prev.filter(item => item.id !== id))
+    
     try {
       const { error } = await deleteSavedItem(id)
-      if (error) throw error
-      
-      // Remove from local state
-      setSavedItems(prev => prev.filter(item => item.id !== id))
+      if (error) {
+        // Revert if error
+        fetchSavedItems()
+        throw error
+      }
     } catch (err) {
       console.error('Error deleting item:', err)
       setError('항목 삭제 중 오류가 발생했습니다')
@@ -72,14 +79,20 @@ function Home() {
   }
 
   const handleToggleStar = async (id, isStarred) => {
+    // Optimistic update - update immediately
+    setSavedItems(prev => prev.map(item => 
+      item.id === id ? { ...item, is_starred: !isStarred } : item
+    ))
+    
     try {
       const { error } = await updateSavedItem(id, { is_starred: !isStarred })
-      if (error) throw error
-      
-      // Update local state
-      setSavedItems(prev => prev.map(item => 
-        item.id === id ? { ...item, is_starred: !isStarred } : item
-      ))
+      if (error) {
+        // Revert if error
+        setSavedItems(prev => prev.map(item => 
+          item.id === id ? { ...item, is_starred: isStarred } : item
+        ))
+        throw error
+      }
     } catch (err) {
       console.error('Error updating star status:', err)
       setError('즐겨찾기 업데이트 중 오류가 발생했습니다')
@@ -87,6 +100,127 @@ function Home() {
   }
 
   // Helper function to format relative time
+  const handleQuickSave = async () => {
+    if (!quickSaveUrl || isSaving) return
+    
+    setIsSaving(true)
+    
+    try {
+      // First fetch metadata for the URL
+      let title = '제목 없음'
+      let description = ''
+      
+      if (quickSaveUrl.startsWith('http')) {
+        try {
+          const serverUrl = import.meta.env.VITE_METADATA_SERVER_URL || 'http://localhost:3001'
+          const response = await fetch(`${serverUrl}/api/fetch-metadata`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: quickSaveUrl }),
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            title = data.title || '제목 없음'
+            description = data.description || ''
+          }
+        } catch (error) {
+          console.error('Error fetching metadata:', error)
+          // Extract domain as fallback title
+          try {
+            const urlObj = new URL(quickSaveUrl)
+            title = urlObj.hostname.replace('www.', '')
+          } catch {
+            title = '제목 없음'
+          }
+        }
+      }
+      
+      // Save the item
+      const itemData = {
+        title: title,
+        content: description,
+        url: quickSaveUrl,
+        category: '기타',
+        tags: [],
+        ai_processed: false
+      }
+      
+      const { data, error } = await saveContent(itemData)
+      
+      if (error) throw error
+      
+      if (data) {
+        // Add to UI immediately
+        setSavedItems(prev => [data, ...prev])
+        
+        // Clear the input
+        setQuickSaveUrl('')
+        
+        // Trigger AI classification in background
+        classifyContentInBackground(data.id, description, title, quickSaveUrl)
+      }
+    } catch (error) {
+      console.error('Error saving URL:', error)
+      alert('저장 중 오류가 발생했습니다')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+  
+  const classifyContentInBackground = async (itemId, content, title, url) => {
+    try {
+      const serverUrl = import.meta.env.VITE_METADATA_SERVER_URL || 'http://localhost:3001'
+      const response = await fetch(`${serverUrl}/api/classify-content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content, title, url })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        console.log('AI Classification result:', result)
+        
+        if (result.category || result.tags || result.summary) {
+          // Update the item in the UI immediately
+          setSavedItems(prev => prev.map(item => 
+            item.id === itemId ? {
+              ...item,
+              category: result.category || '기타',
+              tags: result.tags || [],
+              ai_summary: result.summary || '',
+              ai_processed: true
+            } : item
+          ))
+          
+          // Try to update in database (but don't block UI update if it fails)
+          try {
+            const { data: updateData, error: updateError } = await updateSavedItem(itemId, {
+              category: result.category || '기타',
+              tags: result.tags || [],
+              ai_summary: result.summary || '',
+              ai_processed: true
+            })
+            
+            if (updateError) {
+              console.error('Error updating item in database:', updateError)
+              // UI is already updated, so user sees the classification
+            }
+          } catch (dbError) {
+            console.error('Database update error:', dbError)
+            // UI is already updated, so user sees the classification
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error classifying content:', error)
+    }
+  }
+
   const formatRelativeTime = (dateString) => {
     const date = new Date(dateString)
     const now = new Date()
@@ -132,8 +266,8 @@ function Home() {
     { id: 'all', name: '모든 콘텐츠', count: savedItems.length, icon: '📚' }
   ])
 
-  // Calculate popular tags from saved items
-  const popularTags = savedItems.reduce((acc, item) => {
+  // Calculate all tags from saved items
+  const allTags = savedItems.reduce((acc, item) => {
     if (item.tags && Array.isArray(item.tags)) {
       item.tags.forEach(tag => {
         const existing = acc.find(t => t.name === tag)
@@ -145,7 +279,7 @@ function Home() {
       })
     }
     return acc
-  }, []).sort((a, b) => b.count - a.count).slice(0, 4)
+  }, []).sort((a, b) => b.count - a.count)
 
   const Sidebar = () => (
     <>
@@ -201,12 +335,17 @@ function Home() {
         </div>
       </div>
 
-      {/* Popular Tags */}
+      {/* All Tags */}
       <div className="mt-8">
-        <h2 className="mb-3 text-xs font-semibold uppercase text-muted-foreground">인기 태그</h2>
+        <h2 className="mb-3 text-xs font-semibold uppercase text-muted-foreground">모든 태그</h2>
         <div className="flex flex-wrap gap-2">
-          {popularTags.map((tag) => (
-            <Badge key={tag.name} variant="outline" className="cursor-pointer hover:bg-secondary">
+          {allTags.map((tag) => (
+            <Badge 
+              key={tag.name} 
+              variant={selectedTag === tag.name ? "default" : "outline"} 
+              className="cursor-pointer hover:bg-secondary"
+              onClick={() => setSelectedTag(selectedTag === tag.name ? null : tag.name)}
+            >
               #{tag.name}
               <span className="ml-1 text-xs text-muted-foreground">{tag.count}</span>
             </Badge>
@@ -266,13 +405,27 @@ function Home() {
                 <Input
                   placeholder="URL을 붙여넣거나 텍스트를 입력하세요. AI가 자동으로 분류합니다..."
                   className="pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={quickSaveUrl}
+                  onChange={(e) => setQuickSaveUrl(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleQuickSave()
+                    }
+                  }}
                 />
               </div>
-              <Button onClick={() => setIsModalOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                저장하기
+              <Button onClick={handleQuickSave} disabled={isSaving || !quickSaveUrl}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    저장 중...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    저장하기
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>
@@ -307,10 +460,19 @@ function Home() {
               최근 저장
             </Button>
           </div>
-          <Button variant="outline" size="sm">
-            <Filter className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">필터</span>
-          </Button>
+          <div className="flex gap-2 items-center">
+            {selectedTag && (
+              <Badge variant="default" className="cursor-pointer" onClick={() => setSelectedTag(null)}>
+                <Hash className="mr-1 h-3 w-3" />
+                {selectedTag}
+                <X className="ml-1 h-3 w-3" />
+              </Badge>
+            )}
+            <Button variant="outline" size="sm">
+              <Filter className="mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">필터</span>
+            </Button>
+          </div>
         </div>
 
         {/* Loading State */}
@@ -346,7 +508,15 @@ function Home() {
         {/* Content Grid - Responsive */}
         {!loading && savedItems.length > 0 && (
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {savedItems.map((item) => (
+          {savedItems
+            .filter(item => {
+              // Filter by selected tag
+              if (selectedTag) {
+                return item.tags && item.tags.includes(selectedTag)
+              }
+              return true
+            })
+            .map((item) => (
             <Card key={item.id} className="group cursor-pointer transition-all hover:shadow-md">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -424,8 +594,17 @@ function Home() {
           setSharedContent(null)
         }}
         sharedContent={sharedContent}
-        onSave={() => {
-          fetchSavedItems() // Refresh the list after saving
+        onSave={(newItem) => {
+          // Add the new item to the UI immediately
+          if (newItem) {
+            setSavedItems(prev => [newItem, ...prev])
+          }
+        }}
+        onAIUpdate={(itemId, updates) => {
+          // Update the item in the UI when AI processing completes
+          setSavedItems(prev => prev.map(item => 
+            item.id === itemId ? { ...item, ...updates } : item
+          ))
         }}
       />
     </div>
