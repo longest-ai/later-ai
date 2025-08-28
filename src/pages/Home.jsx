@@ -116,7 +116,9 @@ function Home() {
       
       if (quickSaveUrl.startsWith('http')) {
         try {
-          const serverUrl = import.meta.env.VITE_METADATA_SERVER_URL || 'http://localhost:3001'
+          let serverUrl = import.meta.env.VITE_METADATA_SERVER_URL || 'http://localhost:3001'
+          // Remove trailing slash if present
+          serverUrl = serverUrl.replace(/\/$/, '')
           console.log('Fetching metadata from:', serverUrl)
           const response = await fetch(`${serverUrl}/api/fetch-metadata`, {
             method: 'POST',
@@ -183,7 +185,9 @@ function Home() {
   
   const classifyContentInBackground = async (itemId, content, title, url) => {
     try {
-      const serverUrl = import.meta.env.VITE_METADATA_SERVER_URL || 'http://localhost:3001'
+      let serverUrl = import.meta.env.VITE_METADATA_SERVER_URL || 'http://localhost:3001'
+      // Remove trailing slash if present
+      serverUrl = serverUrl.replace(/\/$/, '')
       const response = await fetch(`${serverUrl}/api/classify-content`, {
         method: 'POST',
         headers: {
