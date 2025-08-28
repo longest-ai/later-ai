@@ -248,6 +248,71 @@ Respond in JSON format:
   }
 });
 
+// Endpoint to save item (for Chrome Extension)
+app.post('/api/save-item', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    const token = authHeader.substring(7);
+    const { url, title, content, description, image, category, tags } = req.body;
+    
+    // Verify token with Supabase
+    const supabaseUrl = process.env.SUPABASE_URL || 'https://zsjlalcpnwbuqxrdryyi.supabase.co';
+    const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzamxhbGNwbndidXF4cmRyeXlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzODgxNDksImV4cCI6MjA0Njk2NDE0OX0.VcZ1ctdDgBW6Ej_9qJe_9fKjaqAwRjE4f9F_7gvP4h0';
+    
+    // Get user info from token
+    const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'apikey': supabaseKey
+      }
+    });
+    
+    if (!userResponse.ok) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    const userData = await userResponse.json();
+    
+    // Save to database
+    const saveResponse = await fetch(`${supabaseUrl}/rest/v1/saved_items`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${token}`,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        user_id: userData.id,
+        url,
+        title,
+        content: content || '',
+        description: description || '',
+        image: image || '',
+        category: category || '기타',
+        tags: tags || [],
+        is_read: false,
+        is_favorite: false
+      })
+    });
+    
+    if (!saveResponse.ok) {
+      const error = await saveResponse.json();
+      console.error('Supabase save error:', error);
+      return res.status(500).json({ error: 'Failed to save item' });
+    }
+    
+    res.json({ success: true, message: 'Item saved successfully' });
+  } catch (error) {
+    console.error('Error saving item:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Metadata server running on port ${PORT}`);
 });

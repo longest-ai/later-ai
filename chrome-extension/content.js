@@ -27,9 +27,26 @@ if (window.location.origin === 'https://later-ai-swart.vercel.app' ||
   function syncSession() {
     const session = getSupabaseSession();
     if (session) {
+      // Also try to get user data from localStorage
+      const userKey = Object.keys(localStorage).find(key => key.includes('supabase.auth.user'));
+      let userData = null;
+      if (userKey) {
+        try {
+          userData = JSON.parse(localStorage.getItem(userKey));
+        } catch (e) {
+          console.error('Failed to parse user data:', e);
+        }
+      }
+      
+      // Merge session with user data
+      const fullSession = {
+        ...session,
+        user: userData || session.user
+      };
+      
       chrome.runtime.sendMessage({
         action: 'updateSupabaseSession',
-        session: session
+        session: fullSession
       }, (response) => {
         if (response && response.success) {
           console.log('Session synced with extension');

@@ -279,32 +279,34 @@ async function saveContent(content) {
     const classification = await classifyResponse.json();
     console.log('Classification:', classification);
     
-    // Save to Supabase
-    const saveResponse = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/saved_items`, {
+    // Instead of saving directly to Supabase, use our backend API
+    console.log('Saving via backend API...');
+    
+    const saveResponse = await fetch(`${CONFIG.API_BASE_URL}/api/save-item`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': CONFIG.SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${currentSession.access_token}`
       },
       body: JSON.stringify({
-        user_id: currentSession.user.id,
         url,
         title: metadata.title || title,
         content: text,
         description: metadata.description || '',
         image: metadata.image || '',
         category: classification.category || '기타',
-        tags: classification.tags || [],
-        is_read: false,
-        is_favorite: false
+        tags: classification.tags || []
       })
     });
     
     if (!saveResponse.ok) {
-      const error = await saveResponse.json();
-      throw new Error(error.message || 'Failed to save item');
+      console.error('Save failed:', saveResponse.status);
+      const errorText = await saveResponse.text();
+      console.error('Error response:', errorText);
+      throw new Error(`Failed to save item: ${saveResponse.status}`);
     }
+    
+    console.log('Item saved successfully!');
     
     return { success: true, category: classification.category, tags: classification.tags };
   } catch (error) {
