@@ -5,8 +5,8 @@ const CONFIG = {
   DASHBOARD_URL: 'https://later-ai-swart.vercel.app',
   
   // Supabase configuration
-  SUPABASE_URL: 'https://zsjlalcpnwbuqxrdryyi.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzamxhbGNwbndidXF4cmRyeXlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzODgxNDksImV4cCI6MjA0Njk2NDE0OX0.VcZ1ctdDgBW6Ej_9qJe_9fKjaqAwRjE4f9F_7gvP4h0',
+  SUPABASE_URL: 'https://hqxfsonpjxnfafhwygwv.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxeGZzb25wanhuZmFmaHd5Z3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNTY1MDQsImV4cCI6MjA3MTkzMjUwNH0.eBMel__WsYsStL1_949eVRM2lei-91F2yfnWfWKDswI',
   
   // Development overrides (set to true for local development)
   USE_LOCAL: false,

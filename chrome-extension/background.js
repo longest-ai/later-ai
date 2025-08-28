@@ -4,8 +4,8 @@
 const CONFIG = {
   API_BASE_URL: 'https://later-ai-backend-d2f9.onrender.com',
   DASHBOARD_URL: 'https://later-ai-swart.vercel.app',
-  SUPABASE_URL: 'https://zsjlalcpnwbuqxrdryyi.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzamxhbGNwbndidXF4cmRyeXlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzODgxNDksImV4cCI6MjA0Njk2NDE0OX0.VcZ1ctdDgBW6Ej_9qJe_9fKjaqAwRjE4f9F_7gvP4h0'
+  SUPABASE_URL: 'https://hqxfsonpjxnfafhwygwv.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxeGZzb25wanhuZmFmaHd5Z3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNTY1MDQsImV4cCI6MjA3MTkzMjUwNH0.eBMel__WsYsStL1_949eVRM2lei-91F2yfnWfWKDswI'
 };
 
 // Session management
@@ -35,7 +35,7 @@ async function checkAuthStatus() {
   
   try {
     // Get stored session from chrome.storage
-    const result = await chrome.storage.local.get(['sb-zsjlalcpnwbuqxrdryyi-auth-token']);
+    const result = await chrome.storage.local.get(['sb-hqxfsonpjxnfafhwygwv-auth-token']);
     const sessionKey = Object.keys(result).find(key => key.includes('auth-token'));
     
     if (sessionKey && result[sessionKey]) {
@@ -106,7 +106,7 @@ async function refreshSession() {
       
       // Store refreshed session
       await chrome.storage.local.set({
-        [`sb-zsjlalcpnwbuqxrdryyi-auth-token`]: data
+        [`sb-hqxfsonpjxnfafhwygwv-auth-token`]: data
       });
       
       updateBadge('', '#10b981'); // Green - logged in
@@ -321,7 +321,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Update session from web app
     currentSession = request.session;
     chrome.storage.local.set({
-      [`sb-zsjlalcpnwbuqxrdryyi-auth-token`]: request.session
+      [`sb-hqxfsonpjxnfafhwygwv-auth-token`]: request.session
     }).then(() => {
       updateBadge('', '#10b981'); // Green - logged in
       sendResponse({ success: true });
@@ -332,7 +332,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'logout') {
     // Clear session
     currentSession = null;
-    chrome.storage.local.remove(['sb-zsjlalcpnwbuqxrdryyi-auth-token']).then(() => {
+    chrome.storage.local.remove(['sb-hqxfsonpjxnfafhwygwv-auth-token']).then(() => {
       updateBadge('', '#6b7280'); // Gray - not logged in
       sendResponse({ success: true });
     });

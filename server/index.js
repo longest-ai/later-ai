@@ -260,8 +260,8 @@ app.post('/api/save-item', async (req, res) => {
     const { url, title, content, description, image, category, tags } = req.body;
     
     // Verify token with Supabase
-    const supabaseUrl = process.env.SUPABASE_URL || 'https://zsjlalcpnwbuqxrdryyi.supabase.co';
-    const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzamxhbGNwbndidXF4cmRyeXlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzODgxNDksImV4cCI6MjA0Njk2NDE0OX0.VcZ1ctdDgBW6Ej_9qJe_9fKjaqAwRjE4f9F_7gvP4h0';
+    const supabaseUrl = process.env.SUPABASE_URL || 'https://hqxfsonpjxnfafhwygwv.supabase.co';
+    const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxeGZzb25wanhuZmFmaHd5Z3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNTY1MDQsImV4cCI6MjA3MTkzMjUwNH0.eBMel__WsYsStL1_949eVRM2lei-91F2yfnWfWKDswI';
     
     // Get user info from token
     const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
