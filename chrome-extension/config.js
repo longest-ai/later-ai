@@ -2,7 +2,7 @@
 const CONFIG = {
   // API endpoints
   API_BASE_URL: 'https://later-ai-backend-d2f9.onrender.com',
-  DASHBOARD_URL: 'https://later-ai.vercel.app',
+  DASHBOARD_URL: 'https://later-ai-swart.vercel.app',
   
   // Supabase configuration
   SUPABASE_URL: 'https://zsjlalcpnwbuqxrdryyi.supabase.co',

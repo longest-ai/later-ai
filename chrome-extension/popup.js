@@ -10,7 +10,7 @@ let CONFIG = null;
 setTimeout(() => {
   CONFIG = window.CONFIG || {
     API_BASE_URL: 'https://later-ai-backend-d2f9.onrender.com',
-    DASHBOARD_URL: 'https://later-ai.vercel.app',
+    DASHBOARD_URL: 'https://later-ai-swart.vercel.app',
     SUPABASE_URL: 'https://zsjlalcpnwbuqxrdryyi.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzamxhbGNwbndidXF4cmRyeXlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzODgxNDksImV4cCI6MjA0Njk2NDE0OX0.VcZ1ctdDgBW6Ej_9qJe_9fKjaqAwRjE4f9F_7gvP4h0'
   };
@@ -86,7 +86,7 @@ async function checkSelectedText() {
 function setupEventListeners() {
   // Login button
   document.getElementById('login-btn').addEventListener('click', () => {
-    const dashboardUrl = CONFIG ? CONFIG.DASHBOARD_URL : 'https://later-ai.vercel.app';
+    const dashboardUrl = CONFIG ? CONFIG.DASHBOARD_URL : 'https://later-ai-swart.vercel.app';
     chrome.tabs.create({ url: dashboardUrl });
   });
   
@@ -99,14 +99,14 @@ function setupEventListeners() {
   // Open dashboard link
   document.getElementById('open-dashboard').addEventListener('click', (e) => {
     e.preventDefault();
-    const dashboardUrl = CONFIG ? CONFIG.DASHBOARD_URL : 'https://later-ai.vercel.app';
+    const dashboardUrl = CONFIG ? CONFIG.DASHBOARD_URL : 'https://later-ai-swart.vercel.app';
     chrome.tabs.create({ url: dashboardUrl });
   });
   
   // Settings link
   document.getElementById('settings').addEventListener('click', (e) => {
     e.preventDefault();
-    const dashboardUrl = CONFIG ? CONFIG.DASHBOARD_URL : 'https://later-ai.vercel.app';
+    const dashboardUrl = CONFIG ? CONFIG.DASHBOARD_URL : 'https://later-ai-swart.vercel.app';
     chrome.tabs.create({ url: `${dashboardUrl}/settings` });
   });
 }

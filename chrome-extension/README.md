@@ -32,7 +32,7 @@ Save any content for later with AI-powered automatic categorization.
 3. **Configuration**:
    The extension is pre-configured with production endpoints:
    - Backend API: https://later-ai-backend-d2f9.onrender.com
-   - Web Dashboard: https://later-ai.vercel.app
+   - Web Dashboard: https://later-ai-swart.vercel.app
    - Supabase: Production instance
 
 ## Project Structure
