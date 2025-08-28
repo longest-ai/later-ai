@@ -18,7 +18,28 @@ const PORT = process.env.PORT || 3001;
 
 // Enable CORS with appropriate origins
 app.use(cors({
-  origin: process.env.CLIENT_URL || ['http://localhost:5173', 'http://localhost:5174'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:3000',
+      'https://later-ai.vercel.app',
+      'https://later-ai-git-main-longest-ais-projects.vercel.app',
+      'https://later-ai-longest-ais-projects.vercel.app'
+    ];
+    
+    // Also allow any Vercel preview URLs
+    if (origin.includes('vercel.app') || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else if (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
