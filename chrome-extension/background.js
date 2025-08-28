@@ -202,6 +202,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
+  
+  // Handle session update from content script
+  if (request.action === 'updateSupabaseSession') {
+    chrome.storage.local.set({ supabaseSession: request.session }).then(() => {
+      console.log('Session updated from web app');
+      sendResponse({ success: true });
+    });
+    return true;
+  }
 });
 
 // Handle keyboard shortcuts

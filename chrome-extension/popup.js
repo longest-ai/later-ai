@@ -39,6 +39,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Set up event listeners
   setupEventListeners();
+  
+  // Recheck login status periodically (in case user just logged in)
+  setTimeout(checkLoginStatus, 1000);
+  setTimeout(checkLoginStatus, 2000);
 });
 
 // Check if user is logged in

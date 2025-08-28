@@ -1,5 +1,54 @@
 // Content script for Later AI Chrome Extension
 
+// Check if we're on the Later AI website and sync authentication
+if (window.location.origin === 'https://later-ai-swart.vercel.app' || 
+    window.location.origin === 'http://localhost:5173') {
+  
+  // Function to get Supabase session from localStorage
+  function getSupabaseSession() {
+    const keys = Object.keys(localStorage);
+    for (const key of keys) {
+      if (key.startsWith('sb-') && key.includes('-auth-token')) {
+        const sessionData = localStorage.getItem(key);
+        if (sessionData) {
+          try {
+            const parsed = JSON.parse(sessionData);
+            return parsed;
+          } catch (e) {
+            console.error('Failed to parse session:', e);
+          }
+        }
+      }
+    }
+    return null;
+  }
+  
+  // Send session to extension
+  function syncSession() {
+    const session = getSupabaseSession();
+    if (session) {
+      chrome.runtime.sendMessage({
+        action: 'updateSupabaseSession',
+        session: session
+      }, (response) => {
+        if (response && response.success) {
+          console.log('Session synced with extension');
+        }
+      });
+    }
+  }
+  
+  // Sync on page load
+  setTimeout(syncSession, 1000);
+  
+  // Listen for storage changes (login/logout)
+  window.addEventListener('storage', (e) => {
+    if (e.key && e.key.includes('auth-token')) {
+      syncSession();
+    }
+  });
+}
+
 // Track text selection
 document.addEventListener('mouseup', () => {
   const selectedText = window.getSelection().toString().trim();

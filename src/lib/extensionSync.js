@@ -3,7 +3,8 @@
 
 import { supabase } from './supabase';
 
-// Chrome Extension ID (update this with your actual extension ID)
+// Chrome Extension ID (update this with your actual extension ID when known)
+// For now, we'll use a different approach - store session in localStorage for extension to read
 const EXTENSION_ID = 'YOUR_EXTENSION_ID_HERE'; // e.g., 'abcdefghijklmnopqrstuvwx'
 
 // Check if extension is installed

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, getCurrentUser } from '../lib/supabase'
+import { syncSessionWithExtension, logoutFromExtension } from '../lib/extensionSync'
 
 const AuthContext = createContext({})
 
@@ -17,15 +18,27 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null)
       setLoading(false)
+      
+      // Sync with Chrome Extension
+      if (event === 'SIGNED_IN' && session) {
+        await syncSessionWithExtension(session)
+      } else if (event === 'SIGNED_OUT') {
+        await logoutFromExtension()
+      }
     })
     
     // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null)
       setLoading(false)
+      
+      // Sync initial session with extension if exists
+      if (session) {
+        await syncSessionWithExtension(session)
+      }
     })
 
     return () => {
