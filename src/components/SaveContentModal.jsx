@@ -1,17 +1,32 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Link, FileText, Image, Loader2, Sparkles } from 'lucide-react'
 import { Button } from './ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card'
 import { Input } from './ui/input'
 import { Badge } from './ui/badge'
+import { handleIncomingShare } from '../services/capacitor'
 
-function SaveContentModal({ isOpen, onClose }) {
+function SaveContentModal({ isOpen, onClose, sharedContent = null }) {
   const [contentType, setContentType] = useState('url') // url, text, image
   const [url, setUrl] = useState('')
   const [text, setText] = useState('')
   const [title, setTitle] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [aiResult, setAiResult] = useState(null)
+
+  // Handle incoming shared content
+  useEffect(() => {
+    if (sharedContent) {
+      if (sharedContent.type === 'url') {
+        setContentType('url')
+        setUrl(sharedContent.content)
+        handleUrlPaste({ target: { value: sharedContent.content } })
+      } else if (sharedContent.type === 'text') {
+        setContentType('text')
+        setText(sharedContent.content)
+      }
+    }
+  }, [sharedContent])
 
   const handleSave = async () => {
     setIsProcessing(true)
@@ -43,8 +58,8 @@ function SaveContentModal({ isOpen, onClose }) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <Card className="w-full max-w-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>새 콘텐츠 저장</CardTitle>

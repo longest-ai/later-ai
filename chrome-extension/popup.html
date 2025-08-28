@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Later AI</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <img src="icons/icon-32.png" alt="Later AI" class="logo">
+      <h1>Later AI</h1>
+    </div>
+
+    <!-- Login State -->
+    <div id="login-section" class="hidden">
+      <p class="message">로그인이 필요합니다</p>
+      <button id="login-btn" class="btn btn-primary">로그인</button>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-section">
+      <!-- Current Page Info -->
+      <div class="page-info">
+        <h3 id="page-title" class="page-title">페이지 제목</h3>
+        <p id="page-url" class="page-url">https://example.com</p>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="actions">
+        <button id="save-page" class="btn btn-primary">
+          <span class="icon">💾</span>
+          페이지 저장
+        </button>
+        <button id="save-selection" class="btn btn-secondary" disabled>
+          <span class="icon">✂️</span>
+          선택 텍스트 저장
+        </button>
+      </div>
+
+      <!-- Note Input -->
+      <div class="note-section">
+        <textarea id="note-input" placeholder="메모 추가 (선택사항)..." rows="3"></textarea>
+      </div>
+
+      <!-- AI Classification Preview -->
+      <div id="ai-result" class="ai-result hidden">
+        <div class="ai-header">
+          <span class="icon">✨</span>
+          <span>AI 분류</span>
+        </div>
+        <div class="ai-content">
+          <div class="category">
+            <span class="label">카테고리:</span>
+            <span id="category-badge" class="badge"></span>
+          </div>
+          <div class="tags">
+            <span class="label">태그:</span>
+            <div id="tags-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Messages -->
+      <div id="status" class="status hidden"></div>
+
+      <!-- Footer Links -->
+      <div class="footer">
+        <a href="#" id="open-dashboard">대시보드 열기</a>
+        <span class="separator">•</span>
+        <a href="#" id="settings">설정</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
