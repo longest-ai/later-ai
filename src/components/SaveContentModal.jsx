@@ -35,19 +35,19 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
 
   const handleSave = async () => {
     if (!user) {
-      alert('로그인이 필요합니다')
+      alert('Login required')
       return
     }
     
     // Wait for title fetching to complete
     if (isFetchingTitle) {
-      alert('페이지 정보를 가져오는 중입니다. 잠시만 기다려주세요.')
+      alert('Fetching page information. Please wait a moment.')
       return
     }
     
     // Don't save with placeholder text
-    if (title === '페이지 정보 가져오는 중...') {
-      alert('페이지 정보를 가져오는 중입니다. 잠시 후 다시 시도해주세요.')
+    if (title === 'Fetching page info...') {
+      alert('Fetching page information. Please try again later.')
       return
     }
     
@@ -56,11 +56,11 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
     try {
       // Prepare data based on content type
       let itemData = {
-        title: title || (contentType === 'url' ? '제목 없음' : text.substring(0, 50)),
+        title: title || (contentType === 'url' ? 'Untitled' : text.substring(0, 50)),
         content: contentType === 'text' ? text : null,
         url: contentType === 'url' ? url : null,
         thumbnail_url: contentType === 'url' ? (thumbnail || null) : null,
-        category: '기타',
+        category: '기타',  // Keep Korean for database enum compatibility
         tags: [],
         ai_processed: false
       }
@@ -84,7 +84,7 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
       resetForm()
     } catch (error) {
       console.error('Error saving item:', error)
-      alert('저장 중 오류가 발생했습니다')
+      alert('Error saving')
     } finally {
       setIsProcessing(false)
     }
@@ -186,7 +186,7 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
     
     // Fetch actual page title
     if (pastedText.startsWith('http')) {
-      setTitle('페이지 정보 가져오는 중...')
+      setTitle('Fetching page info...')
       setIsFetchingTitle(true)
       
       try {
@@ -202,7 +202,7 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
         
         if (response.ok) {
           const data = await response.json()
-          setTitle(data.title || '제목 없음')
+          setTitle(data.title || 'Untitled')
           setThumbnail(data.image || '')
           
           // You can also use description if needed
@@ -221,7 +221,7 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
           const hostname = urlObj.hostname.replace('www.', '')
           setTitle(hostname)
         } catch {
-          setTitle('제목 없음')
+          setTitle('Untitled')
         }
       } finally {
         setIsFetchingTitle(false)
@@ -236,8 +236,8 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>새 콘텐츠 저장</CardTitle>
-            <CardDescription>URL, 텍스트, 이미지를 저장하고 AI가 자동으로 분류합니다</CardDescription>
+            <CardTitle>Save New Content</CardTitle>
+            <CardDescription>Save URL, text, or image and AI will automatically classify it</CardDescription>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -261,7 +261,7 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
               onClick={() => setContentType('text')}
             >
               <FileText className="mr-2 h-4 w-4" />
-              텍스트
+              Text
             </Button>
             <Button
               variant={contentType === 'image' ? 'default' : 'outline'}
@@ -269,7 +269,7 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
               onClick={() => setContentType('image')}
             >
               <Image className="mr-2 h-4 w-4" />
-              이미지
+              Image
             </Button>
           </div>
 
@@ -287,7 +287,7 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
               </div>
               {title && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">제목</label>
+                  <label className="text-sm font-medium">Title</label>
                   <Input value={title} onChange={(e) => setTitle(e.target.value)} />
                 </div>
               )}
@@ -300,16 +300,16 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
               <div className="space-y-2">
                 <label className="text-sm font-medium">제목</label>
                 <Input
-                  placeholder="메모 제목"
+                  placeholder="Note title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">내용</label>
+                <label className="text-sm font-medium">Content</label>
                 <textarea
                   className="min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  placeholder="저장할 텍스트를 입력하세요..."
+                  placeholder="Enter text to save..."
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                 />
@@ -323,10 +323,10 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
               <div className="border-2 border-dashed rounded-lg p-12 text-center">
                 <Image className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                 <p className="text-sm text-muted-foreground mb-2">
-                  이미지를 드래그 앤 드롭하거나
+                  Drag and drop an image or
                 </p>
                 <Button variant="outline" size="sm">
-                  파일 선택
+                  Select file
                 </Button>
               </div>
             </div>
@@ -337,15 +337,15 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
             <div className="rounded-lg border bg-secondary/50 p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-yellow-500" />
-                <span className="text-sm font-medium">AI 분석 결과</span>
+                <span className="text-sm font-medium">AI Analysis Result</span>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">카테고리:</span>
+                  <span className="text-sm text-muted-foreground">Category:</span>
                   <Badge>{aiResult.category}</Badge>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">태그:</span>
+                  <span className="text-sm text-muted-foreground">Tags:</span>
                   <div className="flex gap-1">
                     {aiResult.tags.map(tag => (
                       <Badge key={tag} variant="outline">#{tag}</Badge>
@@ -353,7 +353,7 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
                   </div>
                 </div>
                 <div>
-                  <span className="text-sm text-muted-foreground">요약:</span>
+                  <span className="text-sm text-muted-foreground">Summary:</span>
                   <p className="text-sm mt-1">{aiResult.summary}</p>
                 </div>
               </div>
@@ -366,17 +366,17 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
             {!aiResult && (
               <Badge variant="secondary" className="text-xs">
                 <Sparkles className="mr-1 h-3 w-3" />
-                AI가 자동으로 분류합니다
+                AI will automatically classify
               </Badge>
             )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>
-              취소
+              Cancel
             </Button>
             <Button onClick={handleSave} disabled={isProcessing || isFetchingTitle || (!url && !text && !title)}>
               {(isProcessing || isFetchingTitle) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isProcessing ? '저장 중...' : isFetchingTitle ? '정보 가져오는 중...' : '저장하기'}
+              {isProcessing ? 'Saving...' : isFetchingTitle ? 'Fetching info...' : 'Save'}
             </Button>
           </div>
         </CardFooter>

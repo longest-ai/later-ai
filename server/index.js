@@ -119,7 +119,7 @@ app.post('/api/fetch-metadata', async (req, res) => {
   } catch (error) {
     console.error('Error fetching metadata:', error);
     res.status(200).json({
-      title: '제목을 가져올 수 없습니다',
+      title: 'Unable to fetch title',
       description: '',
       image: '',
       error: error.message,
@@ -156,9 +156,9 @@ app.post('/api/classify-content', async (req, res) => {
     
     // Prepare the content for classification
     const textToClassify = `
-      제목: ${title || '제목 없음'}
+      Title: ${title || 'Untitled'}
       URL: ${url || ''}
-      내용: ${content ? content.substring(0, 500) : ''}
+      Content: ${content ? content.substring(0, 500) : ''}
     `;
     
     console.log('📤 [AI Classification] Calling OpenAI API with text length:', textToClassify.length);
@@ -170,19 +170,19 @@ app.post('/api/classify-content', async (req, res) => {
       messages: [
         {
           role: 'system',
-          content: '당신은 콘텐츠를 분류하고 태그를 생성하는 AI 어시스턴트입니다. 한국어로 답변하고, JSON 형식으로만 응답하세요.'
+          content: 'You are an AI assistant that classifies content and generates tags. Always respond with JSON format only. IMPORTANT: Categories must be in KOREAN (기술, 비즈니스, 디자인, 교육, 정치, 경제, 사회, 문화, 건강, 기타) but tags must be in ENGLISH regardless of the content language. Summary should be in the same language as the content.'
         },
         {
           role: 'user',
-          content: `다음 콘텐츠를 분석해주세요:
+          content: `Analyze the following content:
 
 ${textToClassify}
 
-다음 형식으로 JSON 응답해주세요:
+Respond in JSON format:
 {
-  "category": "기술|비즈니스|디자인|교육|정치|경제|사회|문화|건강|기타 중 하나",
-  "tags": ["태그1", "태그2", "태그3"] (최대 5개, 콘텐츠와 관련된 핵심 키워드),
-  "summary": "50자 이내 요약"
+  "category": "기술|비즈니스|디자인|교육|정치|경제|사회|문화|건강|기타 (choose one, MUST BE IN KOREAN)",
+  "tags": ["tag1", "tag2", "tag3"] (maximum 5 tags, key keywords related to content, MUST BE IN ENGLISH),
+  "summary": "Brief summary (50 chars max, in the same language as the content)"
 }`
         }
       ],

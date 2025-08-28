@@ -25,6 +25,8 @@ function Home() {
   const [isSaving, setIsSaving] = useState(false)
   const [selectedTag, setSelectedTag] = useState(null)
   const [thumbnails, setThumbnails] = useState({}) // Store thumbnails separately
+  const [selectedFilter, setSelectedFilter] = useState('all') // 사이드바 필터
+  const [selectedTab, setSelectedTab] = useState('all') // 상단 탭 필터
 
   // Fetch saved items on mount
   useEffect(() => {
@@ -55,7 +57,7 @@ function Home() {
       setSavedItems(data || [])
     } catch (err) {
       console.error('Error fetching saved items:', err)
-      setError('콘텐츠를 불러오는 중 오류가 발생했습니다')
+      setError('Error loading content')
       setSavedItems([])
     } finally {
       setLoading(false)
@@ -75,7 +77,7 @@ function Home() {
       }
     } catch (err) {
       console.error('Error deleting item:', err)
-      setError('항목 삭제 중 오류가 발생했습니다')
+      setError('Error deleting item')
     }
   }
 
@@ -96,7 +98,7 @@ function Home() {
       }
     } catch (err) {
       console.error('Error updating star status:', err)
-      setError('즐겨찾기 업데이트 중 오류가 발생했습니다')
+      setError('Error updating favorites')
     }
   }
 
@@ -108,7 +110,7 @@ function Home() {
     
     try {
       // First fetch metadata for the URL
-      let title = '제목 없음'
+      let title = 'Untitled'
       let description = ''
       let thumbnail = ''
       
@@ -125,7 +127,7 @@ function Home() {
           
           if (response.ok) {
             const data = await response.json()
-            title = data.title || '제목 없음'
+            title = data.title || 'Untitled'
             description = data.description || ''
             thumbnail = data.image || ''
           }
@@ -136,18 +138,18 @@ function Home() {
             const urlObj = new URL(quickSaveUrl)
             title = urlObj.hostname.replace('www.', '')
           } catch {
-            title = '제목 없음'
+            title = 'Untitled'
           }
         }
       }
       
-      // Save the item
+      // Save the item (use Korean for database compatibility)
       const itemData = {
         title: title,
         content: description,
         url: quickSaveUrl,
         thumbnail_url: thumbnail || null,
-        category: '기타',
+        category: '기타',  // Keep Korean for database enum
         tags: [],
         ai_processed: false
       }
@@ -168,7 +170,7 @@ function Home() {
       }
     } catch (error) {
       console.error('Error saving URL:', error)
-      alert('저장 중 오류가 발생했습니다')
+      alert('Error saving')
     } finally {
       setIsSaving(false)
     }
@@ -190,7 +192,7 @@ function Home() {
         console.log('AI Classification result:', result)
         
         if (result.category || result.tags || result.summary) {
-          // Update the item in the UI immediately
+          // Update the item in the UI immediately (keep Korean for database)
           setSavedItems(prev => prev.map(item => 
             item.id === itemId ? {
               ...item,
@@ -204,7 +206,7 @@ function Home() {
           // Try to update in database (but don't block UI update if it fails)
           try {
             const { data: updateData, error: updateError } = await updateSavedItem(itemId, {
-              category: result.category || '기타',
+              category: result.category || '기타',  // Keep Korean for database
               tags: result.tags || [],
               ai_summary: result.summary || '',
               ai_processed: true
@@ -234,40 +236,65 @@ function Home() {
     const hours = Math.floor(minutes / 60)
     const days = Math.floor(hours / 24)
     
-    if (days > 0) return `${days}일 전`
-    if (hours > 0) return `${hours}시간 전`
-    if (minutes > 0) return `${minutes}분 전`
-    return '방금 전'
+    if (days > 0) return `${days}d ago`
+    if (hours > 0) return `${hours}h ago`
+    if (minutes > 0) return `${minutes}m ago`
+    return 'just now'
+  }
+
+  // Helper function to translate Korean categories to English
+  const translateCategory = (category) => {
+    const translations = {
+      '기술': 'Technology',
+      '비즈니스': 'Business',
+      '디자인': 'Design',
+      '교육': 'Education',
+      '정치': 'Politics',
+      '경제': 'Economy',
+      '사회': 'Society',
+      '문화': 'Culture',
+      '건강': 'Health',
+      '기타': 'Other'
+    }
+    return translations[category] || category
   }
 
   // Helper function to get category icon
   const getCategoryIcon = (category) => {
+    // Translate Korean to English if needed
+    const englishCategory = translateCategory(category)
     const icons = {
-      '기술': '💻',
-      '비즈니스': '💼',
-      '디자인': '🎨',
-      '교육': '📖',
-      '기타': '📁'
+      'Technology': '💻',
+      'Business': '💼',
+      'Design': '🎨',
+      'Education': '📖',
+      'Politics': '🏛️',
+      'Economy': '💹',
+      'Society': '👥',
+      'Culture': '🎭',
+      'Health': '🏥',
+      'Other': '📁'
     }
-    return icons[category] || '📁'
+    return icons[englishCategory] || '📁'
   }
 
   // Calculate dynamic categories from saved items
   const categories = savedItems.reduce((acc, item) => {
-    const existing = acc.find(cat => cat.id === item.category?.toLowerCase())
+    const englishCategory = translateCategory(item.category)
+    const existing = acc.find(cat => cat.id === englishCategory?.toLowerCase())
     if (existing) {
       existing.count++
     } else if (item.category) {
       acc.push({
-        id: item.category.toLowerCase(),
-        name: item.category,
+        id: englishCategory.toLowerCase(),
+        name: englishCategory,
         count: 1,
-        icon: getCategoryIcon(item.category)
+        icon: getCategoryIcon(englishCategory)
       })
     }
     return acc
   }, [
-    { id: 'all', name: '모든 콘텐츠', count: savedItems.length, icon: '📚' }
+    { id: 'all', name: 'All Content', count: savedItems.length, icon: '📚' }
   ])
 
   // Calculate all tags from saved items
@@ -301,35 +328,73 @@ function Home() {
 
       {/* Navigation */}
       <nav className="space-y-1">
-        <button className="flex w-full items-center gap-3 rounded-lg bg-secondary px-3 py-2 text-sm font-medium">
+        <button 
+          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
+            selectedFilter === 'all' ? 'bg-secondary' : 'hover:bg-secondary'
+          }`}
+          onClick={() => {
+            setSelectedFilter('all')
+            setSelectedTag(null)
+          }}
+        >
           <span>📁</span>
-          <span>모든 콘텐츠</span>
+          <span>All Content</span>
           <span className="ml-auto text-xs text-muted-foreground">{savedItems.length}</span>
         </button>
-        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-secondary">
+        <button 
+          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm ${
+            selectedFilter === 'starred' ? 'bg-secondary font-medium' : 'hover:bg-secondary'
+          }`}
+          onClick={() => {
+            setSelectedFilter('starred')
+            setSelectedTag(null)
+          }}
+        >
           <Star className="h-4 w-4" />
-          <span>즐겨찾기</span>
+          <span>Favorites</span>
           <span className="ml-auto text-xs text-muted-foreground">{savedItems.filter(item => item.is_starred).length}</span>
         </button>
-        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-secondary">
+        <button 
+          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm ${
+            selectedFilter === 'ai-recommend' ? 'bg-secondary font-medium' : 'hover:bg-secondary'
+          }`}
+          onClick={() => {
+            setSelectedFilter('ai-recommend')
+            setSelectedTag(null)
+          }}
+        >
           <TrendingUp className="h-4 w-4" />
-          <span>AI 추천</span>
-          <Badge variant="outline" className="ml-auto text-xs">새로움</Badge>
+          <span>AI Recommended</span>
+          <Badge variant="outline" className="ml-auto text-xs">New</Badge>
         </button>
-        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-secondary">
+        <button 
+          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm ${
+            selectedFilter === 'recent' ? 'bg-secondary font-medium' : 'hover:bg-secondary'
+          }`}
+          onClick={() => {
+            setSelectedFilter('recent')
+            setSelectedTag(null)
+          }}
+        >
           <Clock className="h-4 w-4" />
-          <span>최근 본</span>
+          <span>Recently Viewed</span>
         </button>
       </nav>
 
       {/* Categories */}
       <div className="mt-8">
-        <h2 className="mb-3 text-xs font-semibold uppercase text-muted-foreground">카테고리</h2>
+        <h2 className="mb-3 text-xs font-semibold uppercase text-muted-foreground">Categories</h2>
         <div className="space-y-1">
           {categories.filter(cat => cat.id !== 'all').map((category) => (
             <button
               key={category.id}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-secondary"
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm ${
+                selectedFilter === `category-${category.id}` ? 'bg-secondary font-medium' : 'hover:bg-secondary'
+              }`}
+              onClick={() => {
+                setSelectedFilter(`category-${category.id}`)
+                setSelectedTag(null)
+              }}
             >
               <span>{category.icon}</span>
               <span>{category.name}</span>
@@ -341,7 +406,7 @@ function Home() {
 
       {/* All Tags */}
       <div className="mt-8">
-        <h2 className="mb-3 text-xs font-semibold uppercase text-muted-foreground">모든 태그</h2>
+        <h2 className="mb-3 text-xs font-semibold uppercase text-muted-foreground">All Tags</h2>
         <div className="flex flex-wrap gap-2">
           {allTags.map((tag) => (
             <Badge 
@@ -407,7 +472,7 @@ function Home() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="URL을 붙여넣거나 텍스트를 입력하세요. AI가 자동으로 분류합니다..."
+                  placeholder="Paste a URL or enter text. AI will automatically classify it..."
                   className="pl-10"
                   value={quickSaveUrl}
                   onChange={(e) => setQuickSaveUrl(e.target.value)}
@@ -422,12 +487,12 @@ function Home() {
                 {isSaving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    저장 중...
+                    Saving...
                   </>
                 ) : (
                   <>
                     <Plus className="mr-2 h-4 w-4" />
-                    저장하기
+                    Save
                   </>
                 )}
               </Button>
@@ -440,7 +505,7 @@ function Home() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="검색..."
+              placeholder="Search..."
               className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -451,17 +516,35 @@ function Home() {
         {/* Tabs */}
         <div className="mb-6 flex items-center justify-between overflow-x-auto">
           <div className="flex gap-2">
-            <Button variant={selectedCategory === 'all' ? 'default' : 'outline'} size="sm">
-              모든 콘텐츠
+            <Button 
+              variant={selectedTab === 'all' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setSelectedTab('all')}
+            >
+              All Content
             </Button>
-            <Button variant="outline" size="sm">
-              읽지 않음
+            <Button 
+              variant={selectedTab === 'unread' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setSelectedTab('unread')}
+            >
+              Unread
             </Button>
-            <Button variant="outline" size="sm" className="hidden sm:inline-flex">
-              AI 추천
+            <Button 
+              variant={selectedTab === 'ai-recommend' ? 'default' : 'outline'} 
+              size="sm" 
+              className="hidden sm:inline-flex"
+              onClick={() => setSelectedTab('ai-recommend')}
+            >
+              AI Recommended
             </Button>
-            <Button variant="outline" size="sm" className="hidden sm:inline-flex">
-              최근 저장
+            <Button 
+              variant={selectedTab === 'recent' ? 'default' : 'outline'} 
+              size="sm" 
+              className="hidden sm:inline-flex"
+              onClick={() => setSelectedTab('recent')}
+            >
+              Recently Saved
             </Button>
           </div>
           <div className="flex gap-2 items-center">
@@ -472,10 +555,12 @@ function Home() {
                 <X className="ml-1 h-3 w-3" />
               </Badge>
             )}
+            {/* 필터 버튼 임시 숨김
             <Button variant="outline" size="sm">
               <Filter className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">필터</span>
             </Button>
+            */}
           </div>
         </div>
 
@@ -500,11 +585,11 @@ function Home() {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-secondary mb-4">
               <Plus className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-medium mb-2">아직 저장된 콘텐츠가 없습니다</h3>
-            <p className="text-muted-foreground mb-4">URL을 붙여넣거나 브라우저 확장을 사용해 콘텐츠를 저장하세요</p>
+            <h3 className="text-lg font-medium mb-2">No saved content yet</h3>
+            <p className="text-muted-foreground mb-4">Paste a URL or use browser extension to save content</p>
             <Button onClick={() => setIsModalOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              첫 콘텐츠 저장하기
+              Save Your First Content
             </Button>
           </div>
         )}
@@ -514,10 +599,50 @@ function Home() {
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {savedItems
             .filter(item => {
+              // Filter by sidebar selection
+              if (selectedFilter === 'starred') {
+                return item.is_starred
+              }
+              if (selectedFilter === 'ai-recommend') {
+                // AI 추천 로직 (높은 점수의 AI processed 항목)
+                return item.ai_processed && item.ai_summary
+              }
+              if (selectedFilter === 'recent') {
+                // 최근 본 항목 (24시간 이내)
+                const itemDate = new Date(item.created_at)
+                const now = new Date()
+                const hoursDiff = (now - itemDate) / (1000 * 60 * 60)
+                return hoursDiff <= 24
+              }
+              if (selectedFilter.startsWith('category-')) {
+                const categoryId = selectedFilter.replace('category-', '')
+                return translateCategory(item.category)?.toLowerCase() === categoryId
+              }
+              
               // Filter by selected tag
               if (selectedTag) {
                 return item.tags && item.tags.includes(selectedTag)
               }
+              
+              // Filter by top tabs
+              if (selectedTab === 'unread') {
+                // 읽지 않음 필터 (is_read 필드가 없으므로, 최근 7일 이내 항목으로 대체)
+                const itemDate = new Date(item.created_at)
+                const now = new Date()
+                const daysDiff = (now - itemDate) / (1000 * 60 * 60 * 24)
+                return daysDiff <= 7
+              }
+              if (selectedTab === 'ai-recommend') {
+                return item.ai_processed && item.ai_summary
+              }
+              if (selectedTab === 'recent') {
+                // 최근 저장 (3일 이내)
+                const itemDate = new Date(item.created_at)
+                const now = new Date()
+                const daysDiff = (now - itemDate) / (1000 * 60 * 60 * 24)
+                return daysDiff <= 3
+              }
+              
               return true
             })
             .map((item) => (
@@ -543,7 +668,7 @@ function Home() {
                 </div>
                 <div className="absolute top-2 left-2 right-2 flex justify-between">
                   <Badge variant="secondary" className="backdrop-blur-sm">
-                    {item.category}
+                    {translateCategory(item.category)}
                   </Badge>
                   {item.ai_processed && (
                     <Badge variant="outline" className="text-xs backdrop-blur-sm">
@@ -557,7 +682,7 @@ function Home() {
                   {item.title}
                 </CardTitle>
                 <CardDescription className="line-clamp-2">
-                  {item.ai_summary || item.content || '설명이 없습니다'}
+                  {item.ai_summary || item.content || 'No description'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
