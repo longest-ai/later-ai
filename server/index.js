@@ -194,7 +194,7 @@ app.post('/api/classify-content', async (req, res) => {
       messages: [
         {
           role: 'system',
-          content: 'You are an AI assistant that classifies content and generates tags. Always respond with JSON format only. IMPORTANT: Categories must be in KOREAN (기술, 비즈니스, 디자인, 교육, 정치, 경제, 사회, 문화, 건강, 기타) but tags must be in ENGLISH regardless of the content language. Summary should be in the same language as the content.'
+          content: 'You are an AI assistant that classifies content and generates tags. Always respond with JSON format only. IMPORTANT: Categories must be EXACTLY ONE OF THESE: 기술, 비즈니스, 디자인, 교육, 기타 (no other categories allowed). Tags must be in ENGLISH regardless of the content language. Summary should be in the same language as the content.'
         },
         {
           role: 'user',
@@ -204,7 +204,7 @@ ${textToClassify}
 
 Respond in JSON format:
 {
-  "category": "기술|비즈니스|디자인|교육|정치|경제|사회|문화|건강|기타 (choose one, MUST BE IN KOREAN)",
+  "category": "기술|비즈니스|디자인|교육|기타 (choose ONLY ONE of these five options)",
   "tags": ["tag1", "tag2", "tag3"] (maximum 5 tags, key keywords related to content, MUST BE IN ENGLISH),
   "summary": "Brief summary (50 chars max, in the same language as the content)"
 }`
