@@ -255,11 +255,13 @@ async function simulateAIClassification(data) {
         title: metadata.title || contentData.title,
         content: contentData.content,
         description: metadata.description || '',
-        image: metadata.image || '',
+        image_url: metadata.image || '',  // Changed to match DB schema
         category: classification.category || '기타',
         tags: classification.tags || [],
-        is_read: false,
-        is_favorite: false
+        ai_summary: metadata.description || '',
+        ai_processed: true,
+        is_starred: false,  // Changed from is_favorite
+        is_archived: false  // Changed from is_read
       })
     });
     

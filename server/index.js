@@ -293,11 +293,14 @@ app.post('/api/save-item', async (req, res) => {
           title,
           content: content || '',
           description: description || '',
-          image_url: image || '',  // Changed from 'image' to 'image_url' to match database schema
+          image_url: image || '',  // Matches database column name
           category: category || '기타',
           tags: tags || [],
-          is_read: false,
-          is_favorite: false
+          ai_summary: description || '',  // Using description as summary
+          ai_processed: true,  // Mark as AI processed since we classified it
+          is_starred: false,  // Correct column name (not is_favorite)
+          is_archived: false  // Correct column name (not is_read)
+          // read_at is nullable, don't set it on creation
         })
       });
       
