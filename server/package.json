@@ -4,9 +4,13 @@
   "type": "module",
   "description": "Backend server for Later AI metadata fetching",
   "main": "index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js"
+    "dev": "node --watch index.js",
+    "build": "echo 'No build required for Node.js backend'"
   },
   "dependencies": {
     "cors": "^2.8.5",
