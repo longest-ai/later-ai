@@ -10,9 +10,10 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://supabase.co/*",
+    "https://*.supabase.co/*",
     "http://localhost:*/*",
-    "https://*.vercel.app/*"
+    "https://*.vercel.app/*",
+    "https://*.onrender.com/*"
   ],
   "background": {
     "service_worker": "background.js"

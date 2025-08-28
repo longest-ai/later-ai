@@ -4,30 +4,36 @@ Save any content for later with AI-powered automatic categorization.
 
 ## Features
 
-- **Quick Save**: Save current page with one click or keyboard shortcut (Ctrl/Cmd+Shift+S)
-- **Text Selection**: Save selected text from any webpage
+- **Quick Save**: Save current page with one click or keyboard shortcut (Cmd+Shift+S)
+- **Save Selection**: Save highlighted text from any webpage
 - **Context Menu**: Right-click to save links, images, or selected text
-- **AI Classification**: Automatic categorization and tagging of saved content
+- **AI Classification**: Automatic categorization and tagging using GPT-3.5
+- **Authentication Sync**: Seamless integration with Later AI web app
 - **Note Addition**: Add personal notes to saved items
-- **Floating Button**: Quick save button appears when text is selected
 
-## Development Setup
+## Installation
+
+### For Development/Testing
 
 1. **Load Extension in Chrome**:
-   - Open Chrome and go to `chrome://extensions/`
-   - Enable "Developer mode" 
+   - Open Chrome and navigate to `chrome://extensions/`
+   - Enable "Developer mode" in the top right corner
    - Click "Load unpacked"
-   - Select the `chrome-extension` folder
+   - Select the `chrome-extension` directory from this project
+   - The extension should now appear in your Chrome toolbar
 
-2. **Connect to Backend**:
-   - Update `API_BASE_URL` in `background.js` and `popup.js`
-   - Update `DASHBOARD_URL` with your web app URL
+2. **Get Extension ID**:
+   - After loading, copy the Extension ID from the extensions page
+   - Update `src/lib/extensionSync.js` with your extension ID:
+   ```javascript
+   const EXTENSION_ID = 'your-extension-id-here';
+   ```
 
-3. **Test the Extension**:
-   - Click the extension icon to open popup
-   - Try saving a page or selected text
-   - Check context menu (right-click)
-   - Test keyboard shortcut (Ctrl/Cmd+Shift+S)
+3. **Configuration**:
+   The extension is pre-configured with production endpoints:
+   - Backend API: https://later-ai-backend-d2f9.onrender.com
+   - Web Dashboard: https://later-ai.vercel.app
+   - Supabase: Production instance
 
 ## Project Structure
 
@@ -74,18 +80,45 @@ The extension communicates with the Later AI backend through:
    - Add store listing details
    - Submit for review
 
+## Usage
+
+### First Time Setup
+1. Click the Later AI icon in Chrome toolbar
+2. Click "Login" to authenticate via the web app
+3. Once logged in, you can start saving content
+
+### Saving Content
+
+#### Option 1: Popup
+1. Click the extension icon
+2. Optionally add a note
+3. Click "Save Page"
+
+#### Option 2: Keyboard Shortcut
+- Press `Cmd+Shift+S` (Mac) or `Ctrl+Shift+S` (Windows/Linux)
+
+#### Option 3: Context Menu
+1. Right-click on any page, link, image, or selected text
+2. Select "Save to Later AI"
+
+#### Option 4: Save Selection
+1. Highlight any text on a webpage
+2. Click the extension icon
+3. Click "Save Selection"
+
 ## Testing Checklist
 
-- [ ] Popup opens correctly
-- [ ] Login/logout flow works
-- [ ] Page saving works
-- [ ] Text selection saving works
-- [ ] Context menu works
-- [ ] Keyboard shortcut works
-- [ ] AI classification displays
-- [ ] Notes can be added
-- [ ] Dashboard link opens
-- [ ] Notifications appear
+- [x] Extension loads in Chrome
+- [x] Production API endpoints configured
+- [x] Authentication with Supabase
+- [x] Metadata fetching from URLs
+- [x] AI classification (Korean categories, English tags)
+- [x] Save to Supabase database
+- [ ] Extension ID configured in web app
+- [ ] Login flow from extension
+- [ ] Context menu functionality
+- [ ] Keyboard shortcut
+- [ ] Notifications
 
 ## Future Enhancements
 

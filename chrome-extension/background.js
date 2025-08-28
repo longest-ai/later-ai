@@ -1,22 +1,26 @@
 // Background service worker for Later AI Chrome Extension
 
 // Configuration
-const API_BASE_URL = 'http://localhost:3000'; // Will be updated with production URL
-const DASHBOARD_URL = 'http://localhost:5173'; // Will be updated with production URL
+const CONFIG = {
+  API_BASE_URL: 'https://later-ai-backend-d2f9.onrender.com',
+  DASHBOARD_URL: 'https://later-ai.vercel.app',
+  SUPABASE_URL: 'https://zsjlalcpnwbuqxrdryyi.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzamxhbGNwbndidXF4cmRyeXlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzODgxNDksImV4cCI6MjA0Njk2NDE0OX0.VcZ1ctdDgBW6Ej_9qJe_9fKjaqAwRjE4f9F_7gvP4h0'
+};
 
 // Create context menu on installation
 chrome.runtime.onInstalled.addListener(() => {
   // Create context menu for saving selected text
   chrome.contextMenus.create({
     id: 'save-to-later-ai',
-    title: 'Later AI에 저장',
+    title: 'Save to Later AI',
     contexts: ['selection', 'link', 'image', 'page']
   });
   
   // Set default storage values
   chrome.storage.local.set({
-    apiUrl: API_BASE_URL,
-    dashboardUrl: DASHBOARD_URL
+    apiUrl: CONFIG.API_BASE_URL,
+    dashboardUrl: CONFIG.DASHBOARD_URL
   });
 });
 
@@ -64,16 +68,16 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 async function saveContent(content) {
   try {
     // Check if user is logged in
-    const { authToken } = await chrome.storage.local.get('authToken');
+    const { supabaseSession } = await chrome.storage.local.get('supabaseSession');
     
-    if (!authToken) {
+    if (!supabaseSession || !supabaseSession.access_token) {
       // Show notification to login
       chrome.notifications.create({
         type: 'basic',
         iconUrl: 'icons/icon-128.png',
-        title: 'Later AI - 로그인 필요',
-        message: '콘텐츠를 저장하려면 먼저 로그인해주세요.',
-        buttons: [{ title: '로그인' }]
+        title: 'Later AI - Login Required',
+        message: 'Please login to save content.',
+        buttons: [{ title: 'Login' }]
       });
       return;
     }
@@ -83,16 +87,16 @@ async function saveContent(content) {
       type: 'basic',
       iconUrl: 'icons/icon-128.png',
       title: 'Later AI',
-      message: '콘텐츠를 저장하는 중...'
+      message: 'Saving content...'
     });
     
-    // Simulate API call (replace with actual API call in production)
-    await simulateSaveToAPI(content, authToken);
+    // Save content with real API
+    await saveToAPI(content, supabaseSession);
     
     // Show success notification
     chrome.notifications.update('saving', {
-      title: 'Later AI - 저장 완료',
-      message: 'AI가 콘텐츠를 분류하여 저장했습니다!'
+      title: 'Later AI - Saved',
+      message: 'Content saved and classified by AI!'
     });
     
     // Clear notification after 3 seconds
@@ -107,44 +111,77 @@ async function saveContent(content) {
     chrome.notifications.create({
       type: 'basic',
       iconUrl: 'icons/icon-128.png',
-      title: 'Later AI - 오류',
-      message: '저장 중 오류가 발생했습니다. 다시 시도해주세요.'
+      title: 'Later AI - Error',
+      message: 'Failed to save. Please try again.'
     });
   }
 }
 
-// Simulate API call (replace with real implementation)
-async function simulateSaveToAPI(content, authToken) {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // In production, this would be:
-  // const response = await fetch(`${API_BASE_URL}/api/save`, {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //     'Authorization': `Bearer ${authToken}`
-  //   },
-  //   body: JSON.stringify(content)
-  // });
-  // 
-  // if (!response.ok) {
-  //   throw new Error('Failed to save content');
-  // }
-  // 
-  // return await response.json();
-  
-  return {
-    success: true,
-    category: '기술',
-    tags: ['웹개발', 'Chrome Extension']
-  };
+// Save content with real API
+async function saveToAPI(content, session) {
+  try {
+    // Determine URL and title
+    const url = content.url || content.sourceUrl || '';
+    const title = content.title || content.sourceTitle || 'Untitled';
+    const text = content.content || content.text || '';
+    
+    // Fetch metadata
+    const metadataResponse = await fetch(`${CONFIG.API_BASE_URL}/api/fetch-metadata`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const metadata = await metadataResponse.json();
+    
+    // Classify content
+    const classifyResponse = await fetch(`${CONFIG.API_BASE_URL}/api/classify-content`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: metadata.title || title,
+        content: text,
+        url
+      })
+    });
+    const classification = await classifyResponse.json();
+    
+    // Save to Supabase
+    const saveResponse = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/saved_items`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': CONFIG.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        user_id: session.user.id,
+        url,
+        title: metadata.title || title,
+        content: text,
+        description: metadata.description || '',
+        image: metadata.image || '',
+        category: classification.category || '기타',
+        tags: classification.tags || [],
+        is_read: false,
+        is_favorite: false
+      })
+    });
+    
+    if (!saveResponse.ok) {
+      throw new Error('Failed to save item');
+    }
+    
+    return { success: true, category: classification.category, tags: classification.tags };
+  } catch (error) {
+    console.error('Error in saveToAPI:', error);
+    throw error;
+  }
 }
 
 // Handle notification button clicks
 chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
   if (buttonIndex === 0) { // Login button
-    chrome.tabs.create({ url: `${DASHBOARD_URL}/login` });
+    chrome.tabs.create({ url: CONFIG.DASHBOARD_URL });
   }
 });
 
@@ -160,8 +197,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   
   if (request.action === 'getAuthStatus') {
-    chrome.storage.local.get('authToken').then(({ authToken }) => {
-      sendResponse({ isLoggedIn: !!authToken });
+    chrome.storage.local.get('supabaseSession').then(({ supabaseSession }) => {
+      sendResponse({ isLoggedIn: !!supabaseSession && !!supabaseSession.access_token });
     });
     return true;
   }
@@ -182,17 +219,17 @@ chrome.commands.onCommand.addListener(async (command) => {
   }
 });
 
-// Update auth token when user logs in from web app
+// Update auth session when user logs in from web app
 chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
-  if (request.action === 'updateAuthToken') {
-    chrome.storage.local.set({ authToken: request.token }).then(() => {
+  if (request.action === 'updateSupabaseSession') {
+    chrome.storage.local.set({ supabaseSession: request.session }).then(() => {
       sendResponse({ success: true });
     });
     return true;
   }
   
   if (request.action === 'logout') {
-    chrome.storage.local.remove('authToken').then(() => {
+    chrome.storage.local.remove('supabaseSession').then(() => {
       sendResponse({ success: true });
     });
     return true;

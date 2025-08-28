@@ -1,8 +1,20 @@
 // Popup script for Later AI Chrome Extension
 
-// Configuration
-const API_BASE_URL = 'http://localhost:3000'; // Will be updated with production URL
-const DASHBOARD_URL = 'http://localhost:5173'; // Will be updated with production URL
+// Load configuration
+const script = document.createElement('script');
+script.src = chrome.runtime.getURL('config.js');
+document.head.appendChild(script);
+
+// Wait for config to load
+let CONFIG = null;
+setTimeout(() => {
+  CONFIG = window.CONFIG || {
+    API_BASE_URL: 'https://later-ai-backend-d2f9.onrender.com',
+    DASHBOARD_URL: 'https://later-ai.vercel.app',
+    SUPABASE_URL: 'https://zsjlalcpnwbuqxrdryyi.supabase.co',
+    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzamxhbGNwbndidXF4cmRyeXlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzODgxNDksImV4cCI6MjA0Njk2NDE0OX0.VcZ1ctdDgBW6Ej_9qJe_9fKjaqAwRjE4f9F_7gvP4h0'
+  };
+}, 100)
 
 // State
 let currentTab = null;
@@ -32,8 +44,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Check if user is logged in
 async function checkLoginStatus() {
   try {
-    const { authToken } = await chrome.storage.local.get('authToken');
-    isLoggedIn = !!authToken;
+    const { supabaseSession } = await chrome.storage.local.get('supabaseSession');
+    isLoggedIn = !!supabaseSession && supabaseSession.access_token;
     
     if (isLoggedIn) {
       document.getElementById('login-section').classList.add('hidden');
@@ -62,7 +74,7 @@ async function checkSelectedText() {
       saveSelectionBtn.disabled = false;
       saveSelectionBtn.innerHTML = `
         <span class="icon">✂️</span>
-        선택 텍스트 저장 (${selectedText.length}자)
+        Save Selection (${selectedText.length} chars)
       `;
     }
   } catch (error) {
@@ -74,7 +86,8 @@ async function checkSelectedText() {
 function setupEventListeners() {
   // Login button
   document.getElementById('login-btn').addEventListener('click', () => {
-    chrome.tabs.create({ url: `${DASHBOARD_URL}/login` });
+    const dashboardUrl = CONFIG ? CONFIG.DASHBOARD_URL : 'https://later-ai.vercel.app';
+    chrome.tabs.create({ url: dashboardUrl });
   });
   
   // Save page button
@@ -86,13 +99,15 @@ function setupEventListeners() {
   // Open dashboard link
   document.getElementById('open-dashboard').addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: DASHBOARD_URL });
+    const dashboardUrl = CONFIG ? CONFIG.DASHBOARD_URL : 'https://later-ai.vercel.app';
+    chrome.tabs.create({ url: dashboardUrl });
   });
   
   // Settings link
   document.getElementById('settings').addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: `${DASHBOARD_URL}/settings` });
+    const dashboardUrl = CONFIG ? CONFIG.DASHBOARD_URL : 'https://later-ai.vercel.app';
+    chrome.tabs.create({ url: `${dashboardUrl}/settings` });
   });
 }
 
@@ -102,18 +117,18 @@ async function saveCurrentPage() {
   
   const note = document.getElementById('note-input').value;
   
-  showStatus('loading', '저장 중...');
+  showStatus('loading', 'Saving...');
   document.getElementById('save-page').disabled = true;
   
   try {
-    // Simulate AI classification
+    // Save with AI classification
     await simulateAIClassification({
       url: currentTab.url,
       title: currentTab.title,
       note: note
     });
     
-    showStatus('success', '✅ 저장되었습니다!');
+    showStatus('success', '✅ Saved successfully!');
     
     // Clear note after successful save
     document.getElementById('note-input').value = '';
@@ -125,7 +140,7 @@ async function saveCurrentPage() {
     }, 2000);
     
   } catch (error) {
-    showStatus('error', '저장 실패: ' + error.message);
+    showStatus('error', 'Save failed: ' + error.message);
     document.getElementById('save-page').disabled = false;
   }
 }
@@ -136,11 +151,11 @@ async function saveSelectedText() {
   
   const note = document.getElementById('note-input').value;
   
-  showStatus('loading', '저장 중...');
+  showStatus('loading', 'Saving...');
   document.getElementById('save-selection').disabled = true;
   
   try {
-    // Simulate AI classification
+    // Save with AI classification
     await simulateAIClassification({
       text: selectedText,
       sourceUrl: currentTab.url,
@@ -148,7 +163,7 @@ async function saveSelectedText() {
       note: note
     });
     
-    showStatus('success', '✅ 텍스트가 저장되었습니다!');
+    showStatus('success', '✅ Text saved successfully!');
     
     // Clear selection and note
     selectedText = '';
@@ -156,7 +171,7 @@ async function saveSelectedText() {
     document.getElementById('save-selection').disabled = true;
     document.getElementById('save-selection').innerHTML = `
       <span class="icon">✂️</span>
-      선택 텍스트 저장
+      Save Selection
     `;
     
     // Hide status after delay
@@ -165,44 +180,117 @@ async function saveSelectedText() {
     }, 2000);
     
   } catch (error) {
-    showStatus('error', '저장 실패: ' + error.message);
+    showStatus('error', 'Save failed: ' + error.message);
     document.getElementById('save-selection').disabled = false;
   }
 }
 
-// Simulate AI classification (will be replaced with real API call)
+// Save content with real API call
 async function simulateAIClassification(data) {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Show AI classification result
   const aiResult = document.getElementById('ai-result');
   const categoryBadge = document.getElementById('category-badge');
   const tagsContainer = document.getElementById('tags-container');
   
-  // Simulate classification
-  const categories = ['기술', '비즈니스', '교육', '디자인', '기타'];
-  const allTags = ['프로그래밍', 'JavaScript', 'React', 'AI', '스타트업', '마케팅', '개발', 'UX'];
-  
-  const category = categories[Math.floor(Math.random() * categories.length)];
-  const tags = allTags.sort(() => 0.5 - Math.random()).slice(0, 3);
-  
-  categoryBadge.textContent = category;
-  tagsContainer.innerHTML = tags.map(tag => `<span class="tag">#${tag}</span>`).join('');
-  
-  aiResult.classList.remove('hidden');
-  
-  // In production, this would make an actual API call:
-  // const response = await fetch(`${API_BASE_URL}/api/save`, {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //     'Authorization': `Bearer ${authToken}`
-  //   },
-  //   body: JSON.stringify(data)
-  // });
-  
-  return { category, tags };
+  try {
+    // Get session for authentication
+    const { supabaseSession } = await chrome.storage.local.get('supabaseSession');
+    if (!supabaseSession || !supabaseSession.access_token) {
+      throw new Error('Not logged in');
+    }
+    
+    const apiUrl = CONFIG ? CONFIG.API_BASE_URL : 'https://later-ai-backend-d2f9.onrender.com';
+    
+    // Prepare content data
+    const contentData = {
+      url: data.url || data.sourceUrl || currentTab.url,
+      title: data.title || data.sourceTitle || currentTab.title,
+      content: data.text || data.note || '',
+      user_id: supabaseSession.user.id
+    };
+    
+    // First fetch metadata
+    const metadataResponse = await fetch(`${apiUrl}/api/fetch-metadata`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ url: contentData.url })
+    });
+    
+    const metadata = await metadataResponse.json();
+    
+    // Then classify content
+    const classifyResponse = await fetch(`${apiUrl}/api/classify-content`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title: metadata.title || contentData.title,
+        content: contentData.content,
+        url: contentData.url
+      })
+    });
+    
+    const classification = await classifyResponse.json();
+    
+    // Save to Supabase
+    const supabaseUrl = CONFIG ? CONFIG.SUPABASE_URL : 'https://zsjlalcpnwbuqxrdryyi.supabase.co';
+    const supabaseKey = CONFIG ? CONFIG.SUPABASE_ANON_KEY : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzamxhbGNwbndidXF4cmRyeXlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzODgxNDksImV4cCI6MjA0Njk2NDE0OX0.VcZ1ctdDgBW6Ej_9qJe_9fKjaqAwRjE4f9F_7gvP4h0';
+    
+    const saveResponse = await fetch(`${supabaseUrl}/rest/v1/saved_items`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseSession.access_token}`
+      },
+      body: JSON.stringify({
+        user_id: supabaseSession.user.id,
+        url: contentData.url,
+        title: metadata.title || contentData.title,
+        content: contentData.content,
+        description: metadata.description || '',
+        image: metadata.image || '',
+        category: classification.category || '기타',
+        tags: classification.tags || [],
+        is_read: false,
+        is_favorite: false
+      })
+    });
+    
+    if (!saveResponse.ok) {
+      throw new Error('Failed to save item');
+    }
+    
+    // Show AI classification result
+    const translateCategory = (category) => {
+      const translations = {
+        '기술': 'Technology',
+        '비즈니스': 'Business',
+        '디자인': 'Design',
+        '교육': 'Education',
+        '정치': 'Politics',
+        '경제': 'Economy',
+        '사회': 'Society',
+        '문화': 'Culture',
+        '건강': 'Health',
+        '기타': 'Other'
+      };
+      return translations[category] || category;
+    };
+    
+    categoryBadge.textContent = translateCategory(classification.category);
+    tagsContainer.innerHTML = (classification.tags || []).map(tag => `<span class="tag">#${tag}</span>`).join('');
+    
+    aiResult.classList.remove('hidden');
+    
+    return { category: classification.category, tags: classification.tags };
+    
+  } catch (error) {
+    console.error('Error saving content:', error);
+    throw error;
+  }
 }
 
 // Show status message

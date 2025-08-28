@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,15 +16,15 @@
 
     <!-- Login State -->
     <div id="login-section" class="hidden">
-      <p class="message">로그인이 필요합니다</p>
-      <button id="login-btn" class="btn btn-primary">로그인</button>
+      <p class="message">Login required</p>
+      <button id="login-btn" class="btn btn-primary">Login</button>
     </div>
 
     <!-- Main Content -->
     <div id="main-section">
       <!-- Current Page Info -->
       <div class="page-info">
-        <h3 id="page-title" class="page-title">페이지 제목</h3>
+        <h3 id="page-title" class="page-title">Page Title</h3>
         <p id="page-url" class="page-url">https://example.com</p>
       </div>
 
@@ -32,32 +32,32 @@
       <div class="actions">
         <button id="save-page" class="btn btn-primary">
           <span class="icon">💾</span>
-          페이지 저장
+          Save Page
         </button>
         <button id="save-selection" class="btn btn-secondary" disabled>
           <span class="icon">✂️</span>
-          선택 텍스트 저장
+          Save Selection
         </button>
       </div>
 
       <!-- Note Input -->
       <div class="note-section">
-        <textarea id="note-input" placeholder="메모 추가 (선택사항)..." rows="3"></textarea>
+        <textarea id="note-input" placeholder="Add note (optional)..." rows="3"></textarea>
       </div>
 
       <!-- AI Classification Preview -->
       <div id="ai-result" class="ai-result hidden">
         <div class="ai-header">
           <span class="icon">✨</span>
-          <span>AI 분류</span>
+          <span>AI Classification</span>
         </div>
         <div class="ai-content">
           <div class="category">
-            <span class="label">카테고리:</span>
+            <span class="label">Category:</span>
             <span id="category-badge" class="badge"></span>
           </div>
           <div class="tags">
-            <span class="label">태그:</span>
+            <span class="label">Tags:</span>
             <div id="tags-container"></div>
           </div>
         </div>
@@ -68,9 +68,9 @@
 
       <!-- Footer Links -->
       <div class="footer">
-        <a href="#" id="open-dashboard">대시보드 열기</a>
+        <a href="#" id="open-dashboard">Open Dashboard</a>
         <span class="separator">•</span>
-        <a href="#" id="settings">설정</a>
+        <a href="#" id="settings">Settings</a>
       </div>
     </div>
   </div>
