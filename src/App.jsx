@@ -1,27 +1,68 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import Home from './pages/Home'
 import Login from './pages/Login'
 
-function App() {
-  // 임시로 로그인 상태를 true로 설정 (나중에 실제 인증 로직으로 대체)
-  const isAuthenticated = true
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth()
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+  
+  // 디버깅용 콘솔
+  console.log('ProtectedRoute - user:', user, 'loading:', loading)
+  
+  return user ? children : <Navigate to="/login" />
+}
+
+function AppRoutes() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
   return (
+    <Routes>
+      <Route 
+        path="/" 
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/login" 
+        element={user ? <Navigate to="/" /> : <Login />} 
+      />
+      <Route 
+        path="/home" 
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        } 
+      />
+    </Routes>
+  )
+}
+
+function App() {
+  return (
     <Router>
-      <Routes>
-        <Route 
-          path="/" 
-          element={isAuthenticated ? <Home /> : <Navigate to="/login" />} 
-        />
-        <Route 
-          path="/login" 
-          element={!isAuthenticated ? <Login /> : <Navigate to="/" />} 
-        />
-        <Route 
-          path="/home" 
-          element={isAuthenticated ? <Home /> : <Navigate to="/login" />} 
-        />
-      </Routes>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
     </Router>
   )
 }

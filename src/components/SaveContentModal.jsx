@@ -5,14 +5,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from './ui/input'
 import { Badge } from './ui/badge'
 import { handleIncomingShare } from '../services/capacitor'
+import { saveContent, updateSavedItem } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 
-function SaveContentModal({ isOpen, onClose, sharedContent = null }) {
+function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave }) {
+  const { user } = useAuth()
   const [contentType, setContentType] = useState('url') // url, text, image
   const [url, setUrl] = useState('')
   const [text, setText] = useState('')
   const [title, setTitle] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [aiResult, setAiResult] = useState(null)
+  const [isFetchingTitle, setIsFetchingTitle] = useState(false)
 
   // Handle incoming shared content
   useEffect(() => {
@@ -29,29 +33,147 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null }) {
   }, [sharedContent])
 
   const handleSave = async () => {
+    if (!user) {
+      alert('로그인이 필요합니다')
+      return
+    }
+    
+    // Wait for title fetching to complete
+    if (isFetchingTitle) {
+      alert('페이지 정보를 가져오는 중입니다. 잠시만 기다려주세요.')
+      return
+    }
+    
+    // Don't save with placeholder text
+    if (title === '페이지 정보 가져오는 중...') {
+      alert('페이지 정보를 가져오는 중입니다. 잠시 후 다시 시도해주세요.')
+      return
+    }
+    
     setIsProcessing(true)
     
-    // AI 분류 시뮬레이션 (나중에 실제 API 호출로 대체)
-    setTimeout(() => {
-      setAiResult({
-        category: '기술',
-        tags: ['프로그래밍', 'JavaScript', '웹개발'],
-        summary: '웹 개발과 관련된 기술 문서입니다.'
-      })
+    try {
+      // Prepare data based on content type
+      let itemData = {
+        title: title || (contentType === 'url' ? '제목 없음' : text.substring(0, 50)),
+        content: contentType === 'text' ? text : null,
+        url: contentType === 'url' ? url : null,
+        category: '기타',
+        tags: [],
+        ai_processed: false
+      }
+      
+      // Save to database
+      const { data, error } = await saveContent(itemData)
+      
+      if (error) throw error
+      
+      // Trigger AI classification in background
+      if (data) {
+        classifyContent(data.id, itemData.content || '', itemData.title, itemData.url)
+      }
+      
+      // Close modal and refresh list
+      onSave && onSave()
+      onClose()
+      resetForm()
+    } catch (error) {
+      console.error('Error saving item:', error)
+      alert('저장 중 오류가 발생했습니다')
+    } finally {
       setIsProcessing(false)
-    }, 2000)
+    }
+  }
+  
+  const classifyContent = async (itemId, content, title, url) => {
+    try {
+      // Call our backend server to classify content
+      const serverUrl = import.meta.env.VITE_METADATA_SERVER_URL || 'http://localhost:3001'
+      const response = await fetch(`${serverUrl}/api/classify-content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content, title, url })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        // Update the item in the database with classification results
+        if (result.category || result.tags) {
+          await updateSavedItem(itemId, {
+            category: result.category,
+            tags: result.tags,
+            ai_summary: result.summary,
+            ai_processed: true
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error classifying content:', error)
+    }
+  }
+  
+  const resetForm = () => {
+    setContentType('url')
+    setUrl('')
+    setText('')
+    setTitle('')
+    setAiResult(null)
   }
 
-  const handleUrlPaste = (e) => {
+  const handleUrlPaste = async (e) => {
     const pastedText = e.target.value
     setUrl(pastedText)
     
-    // URL에서 제목 추출 시뮬레이션
+    // Clear title if URL is empty
+    if (!pastedText) {
+      setTitle('')
+      return
+    }
+    
+    // Fetch actual page title
     if (pastedText.startsWith('http')) {
-      setTitle('페이지 제목 가져오는 중...')
-      setTimeout(() => {
-        setTitle('예시 페이지 제목')
-      }, 1000)
+      setTitle('페이지 정보 가져오는 중...')
+      setIsFetchingTitle(true)
+      
+      try {
+        // Call our backend server to fetch metadata
+        const serverUrl = import.meta.env.VITE_METADATA_SERVER_URL || 'http://localhost:3001'
+        const response = await fetch(`${serverUrl}/api/fetch-metadata`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url: pastedText }),
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setTitle(data.title || '제목 없음')
+          
+          // You can also use description and image if needed
+          // setDescription(data.description)
+          // setImage(data.image)
+        } else {
+          // Fallback to domain name
+          const urlObj = new URL(pastedText)
+          const hostname = urlObj.hostname.replace('www.', '')
+          setTitle(hostname)
+        }
+      } catch (error) {
+        console.error('Error fetching metadata:', error)
+        // Fallback to domain name
+        try {
+          const urlObj = new URL(pastedText)
+          const hostname = urlObj.hostname.replace('www.', '')
+          setTitle(hostname)
+        } catch {
+          setTitle('제목 없음')
+        }
+      } finally {
+        setIsFetchingTitle(false)
+      }
     }
   }
 
@@ -108,6 +230,7 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null }) {
                   placeholder="https://example.com"
                   value={url}
                   onChange={(e) => handleUrlPaste(e)}
+                  onBlur={(e) => handleUrlPaste(e)}
                 />
               </div>
               {title && (
@@ -199,9 +322,9 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null }) {
             <Button variant="outline" onClick={onClose}>
               취소
             </Button>
-            <Button onClick={handleSave} disabled={isProcessing}>
-              {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isProcessing ? 'AI 분석 중...' : '저장하기'}
+            <Button onClick={handleSave} disabled={isProcessing || isFetchingTitle || (!url && !text && !title)}>
+              {(isProcessing || isFetchingTitle) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isProcessing ? '저장 중...' : isFetchingTitle ? '정보 가져오는 중...' : '저장하기'}
             </Button>
           </div>
         </CardFooter>

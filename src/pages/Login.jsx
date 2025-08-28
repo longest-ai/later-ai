@@ -1,19 +1,67 @@
 import { useState } from 'react'
-import { BookOpen, Mail, Lock, Github, Chrome } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { BookOpen, Mail, Lock, Github, Chrome, AlertCircle } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input'
+import { useAuth } from '../context/AuthContext'
 
 function Login() {
+  const navigate = useNavigate()
+  const { signIn, signUp, signInWithGoogle, loading } = useAuth()
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // 나중에 실제 인증 로직 구현
-    console.log('Submit:', { email, password })
+    setError('')
+    setSuccess('')
+
+    if (isSignUp) {
+      if (password !== confirmPassword) {
+        setError('비밀번호가 일치하지 않습니다')
+        return
+      }
+      
+      const result = await signUp(email, password)
+      console.log('Sign up result:', result)
+      if (result.success) {
+        setSuccess('회원가입이 완료되었습니다! 이메일을 확인해주세요.')
+        setIsSignUp(false)
+        // 자동 로그인 시도
+        setTimeout(() => {
+          signIn(email, password).then(loginResult => {
+            console.log('Auto login after signup:', loginResult)
+            if (loginResult.success) {
+              navigate('/')
+            }
+          })
+        }, 1000)
+      } else {
+        setError(result.error || '회원가입 중 오류가 발생했습니다')
+      }
+    } else {
+      console.log('Attempting login with:', email)
+      const result = await signIn(email, password)
+      console.log('Login result:', result)
+      if (result.success) {
+        navigate('/')
+      } else {
+        setError(result.error || '로그인 중 오류가 발생했습니다')
+      }
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setError('')
+    const result = await signInWithGoogle()
+    if (!result.success) {
+      setError(result.error || 'Google 로그인 중 오류가 발생했습니다')
+    }
   }
 
   return (
@@ -38,6 +86,18 @@ function Login() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-sm text-green-700">
+                <AlertCircle className="h-4 w-4" />
+                {success}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email Input */}
               <div className="space-y-2">
@@ -99,8 +159,12 @@ function Login() {
               )}
 
               {/* Submit Button */}
-              <Button type="submit" className="w-full">
-                {isSignUp ? '계정 만들기' : '로그인'}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  isSignUp ? '계정 만들기' : '로그인'
+                )}
               </Button>
             </form>
 
@@ -116,13 +180,18 @@ function Login() {
 
             {/* Social Login */}
             <div className="space-y-2">
-              <Button variant="outline" className="w-full">
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleGoogleSignIn}
+                disabled={loading}
+              >
                 <Chrome className="mr-2 h-4 w-4" />
                 Google로 계속하기
               </Button>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" disabled>
                 <Github className="mr-2 h-4 w-4" />
-                GitHub로 계속하기
+                GitHub로 계속하기 (준비중)
               </Button>
             </div>
           </CardContent>
