@@ -14,6 +14,7 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
   const [url, setUrl] = useState('')
   const [text, setText] = useState('')
   const [title, setTitle] = useState('')
+  const [thumbnail, setThumbnail] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [aiResult, setAiResult] = useState(null)
   const [isFetchingTitle, setIsFetchingTitle] = useState(false)
@@ -58,12 +59,13 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
         title: title || (contentType === 'url' ? '제목 없음' : text.substring(0, 50)),
         content: contentType === 'text' ? text : null,
         url: contentType === 'url' ? url : null,
+        thumbnail_url: contentType === 'url' ? (thumbnail || null) : null,
         category: '기타',
         tags: [],
         ai_processed: false
       }
       
-      // Save to database
+      // Save to database (without thumbnail)
       const { data, error } = await saveContent(itemData)
       
       if (error) throw error
@@ -168,6 +170,7 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
     setUrl('')
     setText('')
     setTitle('')
+    setThumbnail('')
     setAiResult(null)
   }
 
@@ -200,10 +203,10 @@ function SaveContentModal({ isOpen, onClose, sharedContent = null, onSave, onAIU
         if (response.ok) {
           const data = await response.json()
           setTitle(data.title || '제목 없음')
+          setThumbnail(data.image || '')
           
-          // You can also use description and image if needed
+          // You can also use description if needed
           // setDescription(data.description)
-          // setImage(data.image)
         } else {
           // Fallback to domain name
           const urlObj = new URL(pastedText)

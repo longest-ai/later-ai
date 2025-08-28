@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, Filter, Star, TrendingUp, Clock, Hash, Menu, X, Loader2, AlertCircle, LogOut } from 'lucide-react'
+import { Plus, Search, Filter, Star, TrendingUp, Clock, Hash, Menu, X, Loader2, AlertCircle, LogOut, Image as ImageIcon } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input'
@@ -24,6 +24,7 @@ function Home() {
   const [quickSaveUrl, setQuickSaveUrl] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [selectedTag, setSelectedTag] = useState(null)
+  const [thumbnails, setThumbnails] = useState({}) // Store thumbnails separately
 
   // Fetch saved items on mount
   useEffect(() => {
@@ -109,6 +110,7 @@ function Home() {
       // First fetch metadata for the URL
       let title = '제목 없음'
       let description = ''
+      let thumbnail = ''
       
       if (quickSaveUrl.startsWith('http')) {
         try {
@@ -125,6 +127,7 @@ function Home() {
             const data = await response.json()
             title = data.title || '제목 없음'
             description = data.description || ''
+            thumbnail = data.image || ''
           }
         } catch (error) {
           console.error('Error fetching metadata:', error)
@@ -143,6 +146,7 @@ function Home() {
         title: title,
         content: description,
         url: quickSaveUrl,
+        thumbnail_url: thumbnail || null,
         category: '기타',
         tags: [],
         ai_processed: false
@@ -517,18 +521,38 @@ function Home() {
               return true
             })
             .map((item) => (
-            <Card key={item.id} className="group cursor-pointer transition-all hover:shadow-md">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <Badge variant="secondary" className="mb-2">
+            <Card key={item.id} className="group cursor-pointer transition-all hover:shadow-md overflow-hidden">
+              {/* Thumbnail */}
+              <div className="aspect-video relative bg-muted">
+                {item.thumbnail_url ? (
+                  <img 
+                    src={item.thumbnail_url} 
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none'
+                      e.target.nextSibling.style.display = 'flex'
+                    }}
+                  />
+                ) : null}
+                <div 
+                  className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10 ${item.thumbnail_url ? 'hidden' : ''}`}
+                  style={item.thumbnail_url ? {display: 'none'} : {}}
+                >
+                  <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+                </div>
+                <div className="absolute top-2 left-2 right-2 flex justify-between">
+                  <Badge variant="secondary" className="backdrop-blur-sm">
                     {item.category}
                   </Badge>
                   {item.ai_processed && (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs backdrop-blur-sm">
                       ✨ AI
                     </Badge>
                   )}
                 </div>
+              </div>
+              <CardHeader>
                 <CardTitle className="line-clamp-2 text-base">
                   {item.title}
                 </CardTitle>
