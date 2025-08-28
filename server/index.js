@@ -27,12 +27,15 @@ app.use(cors({
       'http://localhost:5174',
       'http://localhost:3000',
       'https://later-ai.vercel.app',
+      'https://later-ai-swart.vercel.app',
       'https://later-ai-git-main-longest-ais-projects.vercel.app',
       'https://later-ai-longest-ais-projects.vercel.app'
     ];
     
-    // Also allow any Vercel preview URLs
-    if (origin.includes('vercel.app') || allowedOrigins.includes(origin)) {
+    // Allow Chrome extensions and Vercel preview URLs
+    if (origin.startsWith('chrome-extension://') || 
+        origin.includes('vercel.app') || 
+        allowedOrigins.includes(origin)) {
       callback(null, true);
     } else if (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) {
       callback(null, true);

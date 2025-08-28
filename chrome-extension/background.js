@@ -139,13 +139,8 @@ chrome.action.onClicked.addListener(async (tab) => {
     // Not logged in - open login page
     chrome.tabs.create({ url: CONFIG.DASHBOARD_URL });
     
-    // Show notification
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
-      title: 'Later AI - Login Required',
-      message: 'Please login to save content'
-    });
+    // Show notification (without icon to avoid error)
+    console.log('Showing login required notification');
   } else {
     // Logged in - save current page immediately
     updateBadge('...', '#f59e0b'); // Orange - saving
@@ -159,14 +154,7 @@ chrome.action.onClicked.addListener(async (tab) => {
       
       // Success
       updateBadge('✓', '#10b981'); // Green checkmark
-      
-      chrome.notifications.create({
-        type: 'basic',
-        iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
-        title: 'Saved to Later AI',
-        message: `${tab.title}`,
-        buttons: [{ title: 'View in Dashboard' }]
-      });
+      console.log('Save successful!');
       
       // Reset badge after 3 seconds
       setTimeout(() => {
@@ -176,13 +164,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     } catch (error) {
       // Error
       updateBadge('!', '#ef4444'); // Red error
-      
-      chrome.notifications.create({
-        type: 'basic',
-        iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
-        title: 'Save Failed',
-        message: error.message || 'Please try again'
-      });
+      console.error('Save failed:', error.message);
       
       // Reset badge after 3 seconds
       setTimeout(() => {
@@ -258,14 +240,25 @@ async function saveContent(content) {
     const text = content.content || content.text || '';
     
     // Fetch metadata
+    console.log('Fetching metadata for:', url);
     const metadataResponse = await fetch(`${CONFIG.API_BASE_URL}/api/fetch-metadata`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url })
     });
+    
+    if (!metadataResponse.ok) {
+      console.error('Metadata fetch failed:', metadataResponse.status, metadataResponse.statusText);
+      const text = await metadataResponse.text();
+      console.error('Response:', text.substring(0, 200));
+      throw new Error(`Metadata fetch failed: ${metadataResponse.status}`);
+    }
+    
     const metadata = await metadataResponse.json();
+    console.log('Metadata:', metadata);
     
     // Classify content
+    console.log('Classifying content...');
     const classifyResponse = await fetch(`${CONFIG.API_BASE_URL}/api/classify-content`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -275,7 +268,16 @@ async function saveContent(content) {
         url
       })
     });
+    
+    if (!classifyResponse.ok) {
+      console.error('Classification failed:', classifyResponse.status);
+      const text = await classifyResponse.text();
+      console.error('Response:', text.substring(0, 200));
+      throw new Error(`Classification failed: ${classifyResponse.status}`);
+    }
+    
     const classification = await classifyResponse.json();
+    console.log('Classification:', classification);
     
     // Save to Supabase
     const saveResponse = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/saved_items`, {
@@ -367,22 +369,11 @@ chrome.commands.onCommand.addListener(async (command) => {
           title: tab.title
         });
         updateBadge('✓', '#10b981');
-        chrome.notifications.create({
-          type: 'basic',
-          iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
-          title: 'Saved to Later AI',
-          message: `${tab.title}`,
-          buttons: [{ title: 'View in Dashboard' }]
-        });
+        console.log('Save successful via keyboard shortcut!');
         setTimeout(() => updateBadge('', '#10b981'), 3000);
       } catch (error) {
         updateBadge('!', '#ef4444');
-        chrome.notifications.create({
-          type: 'basic',
-          iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
-          title: 'Save Failed',
-          message: error.message || 'Please try again'
-        });
+        console.error('Save failed via keyboard shortcut:', error.message);
         setTimeout(() => updateBadge('', '#10b981'), 3000);
       }
     }
