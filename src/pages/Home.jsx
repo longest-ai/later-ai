@@ -117,6 +117,7 @@ function Home() {
       if (quickSaveUrl.startsWith('http')) {
         try {
           const serverUrl = import.meta.env.VITE_METADATA_SERVER_URL || 'http://localhost:3001'
+          console.log('Fetching metadata from:', serverUrl)
           const response = await fetch(`${serverUrl}/api/fetch-metadata`, {
             method: 'POST',
             headers: {
@@ -125,11 +126,15 @@ function Home() {
             body: JSON.stringify({ url: quickSaveUrl }),
           })
           
+          console.log('Response status:', response.status)
           if (response.ok) {
             const data = await response.json()
+            console.log('Metadata received:', data)
             title = data.title || 'Untitled'
             description = data.description || ''
             thumbnail = data.image || ''
+          } else {
+            console.error('Failed to fetch metadata:', response.status, response.statusText)
           }
         } catch (error) {
           console.error('Error fetching metadata:', error)
