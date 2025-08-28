@@ -40,14 +40,30 @@ async function checkAuthStatus() {
     
     if (sessionKey && result[sessionKey]) {
       currentSession = result[sessionKey];
+      console.log('Found session:', currentSession);
       
-      // Check if session is still valid
-      if (currentSession.expires_at && new Date(currentSession.expires_at * 1000) > new Date()) {
-        updateBadge('', '#10b981'); // Green - logged in
-        return true;
-      } else {
-        // Session expired, try to refresh
-        await refreshSession();
+      // Check if we have access token
+      if (currentSession.access_token) {
+        // Check if session is expired
+        if (currentSession.expires_at) {
+          const expiresAt = typeof currentSession.expires_at === 'number' 
+            ? new Date(currentSession.expires_at * 1000) 
+            : new Date(currentSession.expires_at);
+          
+          if (expiresAt > new Date()) {
+            updateBadge('', '#10b981'); // Green - logged in
+            return true;
+          } else {
+            // Session expired, try to refresh
+            console.log('Session expired, refreshing...');
+            const refreshed = await refreshSession();
+            return refreshed;
+          }
+        } else {
+          // No expiry info, assume valid
+          updateBadge('', '#10b981'); // Green - logged in
+          return true;
+        }
       }
     } else {
       updateBadge('', '#6b7280'); // Gray - not logged in
@@ -126,7 +142,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     // Show notification
     chrome.notifications.create({
       type: 'basic',
-      iconUrl: 'icons/icon-128.png',
+      iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
       title: 'Later AI - Login Required',
       message: 'Please login to save content'
     });
@@ -146,7 +162,7 @@ chrome.action.onClicked.addListener(async (tab) => {
       
       chrome.notifications.create({
         type: 'basic',
-        iconUrl: 'icons/icon-128.png',
+        iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
         title: 'Saved to Later AI',
         message: `${tab.title}`,
         buttons: [{ title: 'View in Dashboard' }]
@@ -163,7 +179,7 @@ chrome.action.onClicked.addListener(async (tab) => {
       
       chrome.notifications.create({
         type: 'basic',
-        iconUrl: 'icons/icon-128.png',
+        iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
         title: 'Save Failed',
         message: error.message || 'Please try again'
       });
@@ -337,8 +353,39 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'quick-save') {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     
-    // Trigger same action as clicking the extension icon
-    chrome.action.onClicked.dispatch(tab);
+    // Perform same action as clicking the extension icon
+    const isAuthenticated = await checkAuthStatus();
+    
+    if (!isAuthenticated) {
+      chrome.tabs.create({ url: CONFIG.DASHBOARD_URL });
+    } else {
+      updateBadge('...', '#f59e0b');
+      try {
+        await saveContent({
+          type: 'page',
+          url: tab.url,
+          title: tab.title
+        });
+        updateBadge('✓', '#10b981');
+        chrome.notifications.create({
+          type: 'basic',
+          iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+          title: 'Saved to Later AI',
+          message: `${tab.title}`,
+          buttons: [{ title: 'View in Dashboard' }]
+        });
+        setTimeout(() => updateBadge('', '#10b981'), 3000);
+      } catch (error) {
+        updateBadge('!', '#ef4444');
+        chrome.notifications.create({
+          type: 'basic',
+          iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+          title: 'Save Failed',
+          message: error.message || 'Please try again'
+        });
+        setTimeout(() => updateBadge('', '#10b981'), 3000);
+      }
+    }
   }
 });
 
